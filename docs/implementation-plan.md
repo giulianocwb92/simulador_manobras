@@ -45,21 +45,21 @@ Marque cada item com [x] ao concluir.
 
 ## FASE 4 — Editor de topologia
 
-- [ ] Instalar e configurar React Flow no canvas principal
-- [ ] Implementar `nodes/BarraNode.tsx` com handles dinâmicos e cor por tensão
-- [ ] Implementar `nodes/DJNode.tsx` com 2 handles e estado visual aberto/fechado
-- [ ] Implementar `nodes/CHNode.tsx` com 2 handles e estado visual aberto/fechado
-- [ ] Implementar `nodes/TFNode.tsx` com handles AT/BT e opcional terciário
-- [ ] Implementar `nodes/ReligadorNode.tsx`
-- [ ] Implementar `nodes/TPNode.tsx` e `nodes/TCNode.tsx`
-- [ ] Implementar `nodes/LinhaNode.tsx` com seleção de SE destino
-- [ ] Implementar toolbar de componentes (drag-and-drop para o canvas)
-- [ ] Implementar modal de propriedades ao soltar componente no canvas
-- [ ] Implementar validação `onConnect`: tensões incompatíveis, linha em MT
-- [ ] Implementar grid snap (20px)
-- [ ] Implementar auto-save a cada 30s (PATCH na API)
-- [ ] Implementar lock visual: banner "SE travada por [nome]" quando `locked_by != null`
-- [ ] Implementar liberação de lock ao sair da página (`beforeunload`)
+- [x] Instalar e configurar React Flow no canvas principal
+- [x] Implementar `nodes/BarraNode.tsx` com handles dinâmicos e cor por tensão
+- [x] Implementar `nodes/DJNode.tsx` com 2 handles e estado visual aberto/fechado
+- [x] Implementar `nodes/CHNode.tsx` com 2 handles e estado visual aberto/fechado
+- [x] Implementar `nodes/TFNode.tsx` com handles AT/BT e opcional terciário
+- [x] Implementar `nodes/ReligadorNode.tsx`
+- [x] Implementar `nodes/TPNode.tsx` e `nodes/TCNode.tsx`
+- [x] Implementar `nodes/LinhaNode.tsx` com seleção de SE destino
+- [x] Implementar toolbar de componentes (drag-and-drop para o canvas)
+- [x] Implementar modal de propriedades ao soltar componente no canvas
+- [x] Implementar validação `onConnect`: tensões incompatíveis, linha em MT
+- [x] Implementar grid snap (20px)
+- [x] Implementar auto-save a cada 30s (PUT na API — `docs/api-contracts.md` não define um PATCH de topologia, só `PUT /substations/{id}`; usado esse endpoint em vez do PATCH citado aqui)
+- [x] Implementar lock visual: banner "SE travada por [nome]" quando `locked_by != null`
+- [x] Implementar liberação de lock ao sair da página (`beforeunload` + cleanup do React Router ao navegar)
 
 ---
 

@@ -21,7 +21,9 @@ a descrição textual de cada passo e exportar o resultado final em PDF.
 
 - [x] FASE 1 — Infraestrutura (Docker Compose, Dockerfiles)
 - [x] FASE 2 — Backend: fundação (models, Alembic, schemas, lock de edição, routers `users`/`substations`)
-- [ ] FASE 3 — Frontend: estrutura base
+- [x] FASE 3 — Frontend: estrutura base (React Query, Zustand, Tailwind, página inicial)
+- [x] FASE 4 — Editor de topologia (React Flow, drag-and-drop, validação de conexão, lock visual, auto-save)
+- [ ] FASE 5 — Elementos provisórios (Jumper, Chave provisória)
 - [ ] demais fases em [`docs/implementation-plan.md`](docs/implementation-plan.md)
 
 ## Como rodar
@@ -41,6 +43,10 @@ docker compose up frontend        # só frontend (porta 5173)
 Com o backend no ar:
 - Swagger UI: http://localhost:8000/docs
 - Health check: http://localhost:8000/health
+
+Com o frontend no ar, abra http://localhost:5173 — na primeira vez ele pede nome e email
+(sem autenticação real, é só pra identificar quem trava/edita uma subestação). Depois é
+possível criar uma subestação na tela inicial e abrir o editor de topologia clicando nela.
 
 Ao subir pela primeira vez (ou após uma nova migration), aplique o schema do banco:
 
@@ -76,7 +82,9 @@ npm run typecheck
 ├── docker-compose.yml
 ├── docs/                # documentação de referência (arquitetura, domínio, API, editor, plano)
 ├── backend/
-│   └── app/{api,models,schemas,services,core}/
+│   ├── app/{api,models,schemas,services,core}/
+│   ├── alembic/         # migrations
+│   └── tests/
 └── frontend/
     └── src/{components,nodes,stores,hooks,services,types}/
 ```

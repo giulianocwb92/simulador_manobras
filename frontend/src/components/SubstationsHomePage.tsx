@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { substationsService } from "../services/substations";
 
 export function SubstationsHomePage() {
@@ -80,12 +81,24 @@ export function SubstationsHomePage() {
 
       <ul className="divide-y divide-slate-200 rounded-md border border-slate-200">
         {substations?.map((substation) => (
-          <li key={substation.id} className="flex items-center justify-between px-4 py-3">
-            <div>
-              <p className="font-medium text-slate-900">{substation.name}</p>
-              <p className="text-sm text-slate-500">{substation.sigla}</p>
-            </div>
-            <span className="text-sm text-slate-400">v{substation.version}</span>
+          <li key={substation.id}>
+            <Link
+              to={`/substations/${substation.id}`}
+              className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
+            >
+              <div>
+                <p className="font-medium text-slate-900">{substation.name}</p>
+                <p className="text-sm text-slate-500">{substation.sigla}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {substation.locked_by_name && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                    travada por {substation.locked_by_name}
+                  </span>
+                )}
+                <span className="text-sm text-slate-400">v{substation.version}</span>
+              </div>
+            </Link>
           </li>
         ))}
       </ul>

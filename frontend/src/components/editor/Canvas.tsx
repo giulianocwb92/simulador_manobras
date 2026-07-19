@@ -1,0 +1,76 @@
+import { useCallback, type DragEvent } from "react";
+import { Background, ConnectionMode, Controls, MiniMap, ReactFlow, useReactFlow, type Connection } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { useEditorStore } from "../../stores/editorStore";
+import { nodeTypes } from "../../nodes";
+import type { EquipmentKind } from "../../types/topology";
+import { validateConnection } from "./connectionValidation";
+
+interface CanvasProps {
+  readOnly?: boolean;
+  onNodeClick?: (nodeId: string) => void;
+  onConnectError?: (message: string) => void;
+  onDropEquipment?: (kind: EquipmentKind, position: { x: number; y: number }) => void;
+}
+
+export function Canvas({ readOnly = false, onNodeClick, onConnectError, onDropEquipment }: CanvasProps) {
+  const nodes = useEditorStore((s) => s.nodes);
+  const edges = useEditorStore((s) => s.edges);
+  const onNodesChange = useEditorStore((s) => s.onNodesChange);
+  const onEdgesChange = useEditorStore((s) => s.onEdgesChange);
+  const addEdgeToStore = useEditorStore((s) => s.addEdge);
+  const { screenToFlowPosition } = useReactFlow();
+
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      const result = validateConnection(connection, nodes);
+      if (!result.ok) {
+        onConnectError?.(result.message ?? "Conexão inválida");
+        return;
+      }
+      addEdgeToStore(connection);
+    },
+    [nodes, addEdgeToStore, onConnectError]
+  );
+
+  const handleDrop = useCallback(
+    (event: DragEvent) => {
+      event.preventDefault();
+      const kind = event.dataTransfer.getData("application/x-equipment-kind") as EquipmentKind;
+      if (!kind) return;
+      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      onDropEquipment?.(kind, position);
+    },
+    [screenToFlowPosition, onDropEquipment]
+  );
+
+  const handleDragOver = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={nodeTypes}
+      onNodesChange={readOnly ? undefined : onNodesChange}
+      onEdgesChange={readOnly ? undefined : onEdgesChange}
+      onConnect={readOnly ? undefined : handleConnect}
+      onNodeClick={(_, node) => onNodeClick?.(node.id)}
+      onDrop={readOnly ? undefined : handleDrop}
+      onDragOver={readOnly ? undefined : handleDragOver}
+      connectionMode={ConnectionMode.Loose}
+      snapToGrid
+      snapGrid={[20, 20]}
+      nodesDraggable={!readOnly}
+      nodesConnectable={!readOnly}
+      elementsSelectable={!readOnly}
+      fitView
+    >
+      <Background gap={20} />
+      <Controls />
+      <MiniMap pannable zoomable />
+    </ReactFlow>
+  );
+}

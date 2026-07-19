@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.models.substation import Substation, SubstationVersion
+from app.models.user import User
 from app.schemas.substation import (
     LockRequest,
     SubstationCreate,
@@ -30,10 +31,22 @@ def _locked_error_detail(exc: LockedError) -> dict:
     }
 
 
-async def _get_substation_or_404(db: AsyncSession, substation_id: uuid.UUID) -> Substation:
-    result = await db.execute(
-        select(Substation).where(Substation.id == substation_id).options(selectinload(Substation.locked_by_user))
-    )
+async def _ensure_user_exists(db: AsyncSession, user_id: uuid.UUID) -> None:
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Usuário não encontrado")
+
+
+async def _get_substation_or_404(
+    db: AsyncSession, substation_id: uuid.UUID, *, for_update: bool = False
+) -> Substation:
+    query = select(Substation).where(Substation.id == substation_id).options(selectinload(Substation.locked_by_user))
+    if for_update:
+        # trava a linha até o commit: evita que duas requisições concorrentes de
+        # lock/unlock/save façam leitura-modificação-escrita intercaladas e
+        # deixem locked_by/locked_at inconsistentes entre si
+        query = query.with_for_update()
+    result = await db.execute(query)
     substation = result.scalar_one_or_none()
     if substation is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Subestação não encontrada")
@@ -71,7 +84,8 @@ async def get_substation(substation_id: uuid.UUID, db: AsyncSession = Depends(ge
 async def update_substation(
     substation_id: uuid.UUID, payload: SubstationUpdate, db: AsyncSession = Depends(get_db)
 ) -> Substation:
-    substation = await _get_substation_or_404(db, substation_id)
+    await _ensure_user_exists(db, payload.user_id)
+    substation = await _get_substation_or_404(db, substation_id, for_update=True)
     try:
         assert_lock_owned(substation, payload.user_id)
     except NotLockedError as exc:
@@ -111,7 +125,8 @@ async def get_version(substation_id: uuid.UUID, version: int, db: AsyncSession =
 async def lock_substation(
     substation_id: uuid.UUID, payload: LockRequest, db: AsyncSession = Depends(get_db)
 ) -> Substation:
-    substation = await _get_substation_or_404(db, substation_id)
+    await _ensure_user_exists(db, payload.user_id)
+    substation = await _get_substation_or_404(db, substation_id, for_update=True)
     try:
         return await acquire_lock(db, substation, payload.user_id)
     except LockedError as exc:
@@ -122,7 +137,7 @@ async def lock_substation(
 async def unlock_substation(
     substation_id: uuid.UUID, payload: LockRequest, db: AsyncSession = Depends(get_db)
 ) -> Substation:
-    substation = await _get_substation_or_404(db, substation_id)
+    substation = await _get_substation_or_404(db, substation_id, for_update=True)
     try:
         return await release_lock(db, substation, payload.user_id)
     except LockedError as exc:
