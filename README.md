@@ -19,7 +19,18 @@ a descrição textual de cada passo e exportar o resultado final em PDF.
 
 🚧 Em desenvolvimento — ver checklist de fases em [`docs/implementation-plan.md`](docs/implementation-plan.md).
 
+- [x] FASE 1 — Infraestrutura (Docker Compose, Dockerfiles)
+- [x] FASE 2 — Backend: fundação (models, Alembic, schemas, lock de edição, routers `users`/`substations`)
+- [ ] FASE 3 — Frontend: estrutura base
+- [ ] demais fases em [`docs/implementation-plan.md`](docs/implementation-plan.md)
+
 ## Como rodar
+
+Antes da primeira execução, copie o `.env.example` para `.env`:
+
+```bash
+cp .env.example .env
+```
 
 ```bash
 docker compose up --build         # sobe frontend, backend e postgres
@@ -27,10 +38,22 @@ docker compose up backend         # só backend (porta 8000)
 docker compose up frontend        # só frontend (porta 5173)
 ```
 
+Com o backend no ar:
+- Swagger UI: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
+
+Ao subir pela primeira vez (ou após uma nova migration), aplique o schema do banco:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
 Backend (fora do container, com venv):
 
 ```bash
 cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 uvicorn app.main:app --reload
 alembic upgrade head              # aplica migrations
 pytest                            # roda testes
