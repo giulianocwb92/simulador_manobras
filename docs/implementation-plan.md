@@ -7,12 +7,12 @@ Marque cada item com [x] ao concluir.
 
 ## FASE 1 — Infraestrutura
 
-- [ ] Criar `docker-compose.yml` com 3 serviços: postgres, backend, frontend
-- [ ] Criar `backend/Dockerfile` (Python 3.12 slim)
-- [ ] Criar `frontend/Dockerfile` (Node 20 + Nginx para prod)
-- [ ] Criar `.env.example` com todas as variáveis necessárias
-- [ ] Configurar rede interna Docker entre containers
-- [ ] Verificar que `docker compose up --build` sobe tudo sem erros
+- [x] Criar `docker-compose.yml` com 3 serviços: postgres, backend, frontend
+- [x] Criar `backend/Dockerfile` (Python 3.12 slim)
+- [x] Criar `frontend/Dockerfile` (Node 20 + Nginx para prod)
+- [x] Criar `.env.example` com todas as variáveis necessárias
+- [x] Configurar rede interna Docker entre containers
+- [x] Verificar que `docker compose up --build` sobe tudo sem erros
 
 ---
 
