@@ -1,10 +1,7 @@
+import { SubstationsHomePage } from "./components/SubstationsHomePage";
+
 function App() {
-  return (
-    <div>
-      <h1>Simulador de Manobras — COPEL</h1>
-      <p>Em desenvolvimento.</p>
-    </div>
-  );
+  return <SubstationsHomePage />;
 }
 
 export default App;

@@ -33,13 +33,13 @@ Marque cada item com [x] ao concluir.
 
 ## FASE 3 — Frontend: estrutura base
 
-- [ ] Scaffold Vite + React 18 + TypeScript
-- [ ] Instalar dependências: `reactflow`, `zustand`, `@tanstack/react-query`, `tailwindcss`
-- [ ] Configurar Tailwind
-- [ ] Criar `services/api.ts` (cliente HTTP com base URL configurável)
-- [ ] Criar `stores/editorStore.ts` (modo: CONFIGURAÇÃO / GRAVANDO / FINALIZADA)
-- [ ] Criar `stores/maneuverStore.ts` (passos, cabeçalho)
-- [ ] Criar página inicial: lista de subestações + botão criar nova
+- [x] Scaffold Vite + React 18 + TypeScript
+- [x] Instalar dependências: `@xyflow/react` (React Flow v12, sucessor do pacote `reactflow`), `zustand`, `@tanstack/react-query`, `tailwindcss`
+- [x] Configurar Tailwind
+- [x] Criar `services/api.ts` (cliente HTTP com base URL configurável)
+- [x] Criar `stores/editorStore.ts` (modo: CONFIGURAÇÃO / GRAVANDO / FINALIZADA)
+- [x] Criar `stores/maneuverStore.ts` (passos, cabeçalho)
+- [x] Criar página inicial: lista de subestações + botão criar nova
 
 ---
 
