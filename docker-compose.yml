@@ -29,6 +29,10 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./backend/storage:/app/storage
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+      - ./backend/pytest.ini:/app/pytest.ini
+      - ./backend/tests:/app/tests
     depends_on:
       postgres:
         condition: service_healthy

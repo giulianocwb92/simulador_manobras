@@ -18,16 +18,16 @@ Marque cada item com [x] ao concluir.
 
 ## FASE 2 — Backend: fundação
 
-- [ ] Scaffold FastAPI em `backend/app/main.py` com CORS configurado
-- [ ] Configurar SQLAlchemy async (`app/core/database.py`)
-- [ ] Criar models ORM: `User`, `Substation`, `SubstationVersion`, `Maneuver`, `ManeuverStep`, `ManeuverSubstation`, `ProvisionalElement`
-- [ ] Configurar Alembic e gerar migration inicial
-- [ ] Criar schemas Pydantic para todos os models
-- [ ] Implementar router `users` (CRUD simples)
-- [ ] Implementar router `substations` (CRUD + lock/unlock + versions)
-- [ ] Implementar `lock_service.py` com timeout de 30 minutos
-- [ ] Testes unitários: lock service, validações de schema
-- [ ] Verificar todos os endpoints via Swagger UI (`/docs`)
+- [x] Scaffold FastAPI em `backend/app/main.py` com CORS configurado
+- [x] Configurar SQLAlchemy async (`app/core/database.py`)
+- [x] Criar models ORM: `User`, `Substation`, `SubstationVersion`, `Maneuver`, `ManeuverStep`, `ManeuverSubstation`, `ProvisionalElement`
+- [x] Configurar Alembic e gerar migration inicial
+- [x] Criar schemas Pydantic para todos os models
+- [x] Implementar router `users` (CRUD simples)
+- [x] Implementar router `substations` (CRUD + lock/unlock + versions)
+- [x] Implementar `lock_service.py` com timeout de 30 minutos
+- [x] Testes unitários: lock service, validações de schema
+- [x] Verificar todos os endpoints via Swagger UI (`/docs`)
 
 ---
 
