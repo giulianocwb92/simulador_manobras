@@ -1,7 +1,7 @@
-# Simulador de Manobras — COPEL Distribuição
+# Simulador de Manobras
 
 Sistema web para planejamento e documentação de manobras em subestações de distribuição,
-desenvolvido para engenheiros de pré-operação da COPEL Distribuição.
+desenvolvido para engenheiros de pré-operação.
 
 Permite montar a topologia de uma subestação em um editor visual, simular a sequência de
 manobras (abertura/fechamento de disjuntores, chaves e religadores), gerar automaticamente
