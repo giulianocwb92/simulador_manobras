@@ -1,9 +1,10 @@
-import { useCallback, type DragEvent } from "react";
+import { useCallback, useMemo, type DragEvent } from "react";
 import { Background, ConnectionMode, Controls, MiniMap, ReactFlow, useReactFlow, type Connection } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEditorStore } from "../../stores/editorStore";
 import { nodeTypes } from "../../nodes";
-import type { EquipmentKind } from "../../types/topology";
+import { tensaoDoTerminal, VOLTAGE_COLORS, type EquipmentKind } from "../../types/topology";
+import { WIRE_UNCONNECTED_STROKE } from "../../constants/voltageColors";
 import { validateConnection } from "./connectionValidation";
 
 interface CanvasProps {
@@ -49,10 +50,23 @@ export function Canvas({ readOnly = false, onNodeClick, onConnectError, onDropEq
     event.dataTransfer.dropEffect = "move";
   }, []);
 
+  const styledEdges = useMemo(
+    () =>
+      edges.map((edge) => {
+        const sourceNode = nodes.find((n) => n.id === edge.source);
+        const targetNode = nodes.find((n) => n.id === edge.target);
+        const tensao =
+          tensaoDoTerminal(sourceNode, edge.sourceHandle) ?? tensaoDoTerminal(targetNode, edge.targetHandle);
+        const stroke = tensao !== undefined ? VOLTAGE_COLORS[tensao] : WIRE_UNCONNECTED_STROKE;
+        return { ...edge, type: "step", style: { ...edge.style, stroke, strokeWidth: 2 } };
+      }),
+    [edges, nodes]
+  );
+
   return (
     <ReactFlow
       nodes={nodes}
-      edges={edges}
+      edges={styledEdges}
       nodeTypes={nodeTypes}
       onNodesChange={readOnly ? undefined : onNodesChange}
       onEdgesChange={readOnly ? undefined : onEdgesChange}

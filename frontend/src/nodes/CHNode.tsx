@@ -1,21 +1,35 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { CHNodeType } from "../types/topology";
+import { useNodeRotation } from "./useNodeRotation";
 
-export function CHNode({ data, selected }: NodeProps<CHNodeType>) {
+export function CHNode({ id, data, selected }: NodeProps<CHNodeType>) {
   const aberto = data.estado === "aberto";
+  const { wrapperStyle } = useNodeRotation(id, data.rotation);
+  // Convenção COPEL: fechado (energizado) = vermelho, aberto (isolado) = verde.
+  const color = aberto ? "#16a34a" : "#dc2626";
+
   return (
     <div className="flex flex-col items-center">
-      <Handle id="terminal-a" type="source" position={Position.Top} className="!bg-slate-600" />
       <div
-        className={`flex h-10 w-10 items-center justify-center border-2 text-sm font-bold ${
-          selected ? "border-blue-500" : "border-slate-700"
-        } ${aberto ? "bg-red-50 text-red-600" : "bg-white text-slate-800"}`}
+        style={wrapperStyle}
+        className={`relative h-10 w-20 rounded-sm ${selected ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
       >
-        <svg viewBox="0 0 20 20" className="h-5 w-5" stroke="currentColor" strokeWidth="2" fill="none">
-          <line x1="10" y1="0" x2="10" y2="20" transform={aberto ? "rotate(25 10 10)" : undefined} />
+        <Handle id="terminal-a" type="source" position={Position.Left} className="!bg-slate-600" />
+        <svg viewBox="0 0 80 40" className="h-10 w-20">
+          <line x1="0" y1="20" x2="28" y2="20" stroke={color} strokeWidth="2" />
+          <line x1="52" y1="20" x2="80" y2="20" stroke={color} strokeWidth="2" />
+          {aberto ? (
+            <line x1="30" y1="27" x2="50" y2="13" stroke={color} strokeWidth="3" strokeLinecap="round" />
+          ) : (
+            <>
+              <line x1="28" y1="20" x2="52" y2="20" stroke={color} strokeWidth="2" />
+              <circle cx="35" cy="20" r="3.5" fill="white" stroke={color} strokeWidth="2" />
+              <circle cx="45" cy="20" r="3.5" fill="white" stroke={color} strokeWidth="2" />
+            </>
+          )}
         </svg>
+        <Handle id="terminal-b" type="source" position={Position.Right} className="!bg-slate-600" />
       </div>
-      <Handle id="terminal-b" type="source" position={Position.Bottom} className="!bg-slate-600" />
       <span className="mt-1 whitespace-nowrap text-[10px] font-medium text-slate-600">{data.label}</span>
     </div>
   );

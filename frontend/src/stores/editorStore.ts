@@ -1,8 +1,19 @@
 import { applyEdgeChanges, applyNodeChanges, type Connection, type Edge, type EdgeChange, type NodeChange } from "@xyflow/react";
 import { create } from "zustand";
-import type { TopologyNode } from "../types/topology";
+import type { EquipmentKind, Rotation, TopologyNode } from "../types/topology";
 
 export type EditorMode = "CONFIGURACAO" | "GRAVANDO" | "FINALIZADA";
+
+const ROTATABLE_KINDS: ReadonlySet<EquipmentKind> = new Set([
+  "barra",
+  "disjuntor",
+  "chave",
+  "religador",
+  "transformador",
+  "tf3",
+  "tp",
+  "tc",
+]);
 
 interface EditorState {
   mode: EditorMode;
@@ -17,6 +28,7 @@ interface EditorState {
   addNode: (node: TopologyNode) => void;
   updateNodeData: (id: string, data: Record<string, unknown>) => void;
   addEdge: (connection: Connection) => void;
+  rotateSelectedNodes: () => void;
   reset: () => void;
 }
 
@@ -51,6 +63,15 @@ export const useEditorStore = create<EditorState>((set) => ({
           targetHandle: connection.targetHandle,
         },
       ],
+    })),
+  rotateSelectedNodes: () =>
+    set((state) => ({
+      nodes: state.nodes.map((node) => {
+        if (!node.selected || !ROTATABLE_KINDS.has(node.type as EquipmentKind)) return node;
+        const current = ((node.data as { rotation?: Rotation }).rotation ?? 0) as Rotation;
+        const next = ((current + 90) % 360) as Rotation;
+        return { ...node, data: { ...node.data, rotation: next } } as TopologyNode;
+      }),
     })),
   reset: () => set({ mode: "CONFIGURACAO", activeSubstationId: null, nodes: [], edges: [] }),
 }));

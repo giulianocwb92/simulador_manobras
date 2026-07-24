@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { VOLTAGE_LEVELS, type EquipmentKind, type VoltageLevel } from "../../types/topology";
+import { VOLTAGE_LEVELS, type BarraTipo, type EquipmentKind, type VoltageLevel } from "../../types/topology";
 
 export interface PropertiesModalSubmitPayload {
   label: string;
@@ -19,10 +19,17 @@ const KIND_TITLES: Record<EquipmentKind, string> = {
   disjuntor: "Disjuntor",
   chave: "Chave",
   transformador: "Transformador",
+  tf3: "Transformador 3 Enrolamentos",
   religador: "Religador",
   tp: "TP",
   tc: "TC",
   linha: "Linha",
+};
+
+const BARRA_TIPO_LABELS: Record<BarraTipo, string> = {
+  principal: "Principal",
+  transferencia: "Transferência",
+  dupla: "Dupla",
 };
 
 export function PropertiesModal({
@@ -41,18 +48,19 @@ export function PropertiesModal({
   const [tensao, setTensao] = useState<VoltageLevel>((initialData?.tensao as VoltageLevel) ?? 138);
   const [tensaoAt, setTensaoAt] = useState<VoltageLevel>((initialData?.tensao_at as VoltageLevel) ?? 138);
   const [tensaoBt, setTensaoBt] = useState<VoltageLevel>((initialData?.tensao_bt as VoltageLevel) ?? 13.8);
-  const [temTerciario, setTemTerciario] = useState(Boolean(initialData?.tensao_ter));
   const [tensaoTer, setTensaoTer] = useState<VoltageLevel>((initialData?.tensao_ter as VoltageLevel) ?? 13.8);
   const [potenciaMva, setPotenciaMva] = useState(
     initialData?.potencia_mva !== undefined ? String(initialData.potencia_mva) : ""
   );
   const [destinoSeId, setDestinoSeId] = useState((initialData?.destino_se_id as string) ?? "");
+  const [barraTipo, setBarraTipo] = useState<BarraTipo>((initialData?.tipo as BarraTipo) ?? "principal");
+  const [fonte, setFonte] = useState((initialData?.fonte as boolean) ?? false);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
     if (kind === "barra") {
-      onSubmit({ label: nome, data: { label: nome, tensao } });
+      onSubmit({ label: nome, data: { nome, tensao, tipo: barraTipo, fonte } });
       return;
     }
     if (kind === "disjuntor") {
@@ -79,7 +87,21 @@ export function PropertiesModal({
           identificador,
           tensao_at: tensaoAt,
           tensao_bt: tensaoBt,
-          tensao_ter: temTerciario ? tensaoTer : undefined,
+          potencia_mva: potenciaMva ? Number(potenciaMva) : undefined,
+        },
+      });
+      return;
+    }
+    if (kind === "tf3") {
+      const label = `TF-${identificador}`;
+      onSubmit({
+        label,
+        data: {
+          label,
+          identificador,
+          tensao_at: tensaoAt,
+          tensao_bt: tensaoBt,
+          tensao_ter: tensaoTer,
           potencia_mva: potenciaMva ? Number(potenciaMva) : undefined,
         },
       });
@@ -139,6 +161,29 @@ export function PropertiesModal({
           </label>
         )}
 
+        {kind === "barra" && (
+          <>
+            <label className="mb-3 block text-sm">
+              Tipo
+              <select
+                value={barraTipo}
+                onChange={(e) => setBarraTipo(e.target.value as BarraTipo)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              >
+                {(Object.keys(BARRA_TIPO_LABELS) as BarraTipo[]).map((t) => (
+                  <option key={t} value={t}>
+                    {BARRA_TIPO_LABELS[t]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mb-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={fonte} onChange={(e) => setFonte(e.target.checked)} />
+              Barra fonte (⚡ inicia propagação de cor)
+            </label>
+          </>
+        )}
+
         {(kind === "disjuntor" || kind === "chave" || kind === "religador") && (
           <label className="mb-3 block text-sm">
             Estado inicial
@@ -170,7 +215,7 @@ export function PropertiesModal({
           </label>
         )}
 
-        {kind === "transformador" && (
+        {(kind === "transformador" || kind === "tf3") && (
           <>
             <label className="mb-3 block text-sm">
               Identificador (letra ou número)
@@ -210,11 +255,7 @@ export function PropertiesModal({
                 ))}
               </select>
             </label>
-            <label className="mb-2 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={temTerciario} onChange={(e) => setTemTerciario(e.target.checked)} />
-              Tem terciário?
-            </label>
-            {temTerciario && (
+            {kind === "tf3" && (
               <label className="mb-3 block text-sm">
                 Tensão terciário
                 <select

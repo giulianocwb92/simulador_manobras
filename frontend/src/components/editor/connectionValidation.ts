@@ -1,19 +1,9 @@
 import type { Connection } from "@xyflow/react";
-import type { TopologyNode } from "../../types/topology";
+import { tensaoDoTerminal, type TopologyNode } from "../../types/topology";
 
 export interface ConnectionValidationResult {
   ok: boolean;
   message?: string;
-}
-
-function tensaoNaConexao(node: TopologyNode, handleId: string | null | undefined): number | undefined {
-  if (node.type === "barra") return node.data.tensao;
-  if (node.type === "transformador") {
-    if (handleId === "terminal-at") return node.data.tensao_at;
-    if (handleId === "terminal-bt") return node.data.tensao_bt;
-    if (handleId === "terminal-ter") return node.data.tensao_ter;
-  }
-  return undefined;
 }
 
 /** Regras de validação de conexão — ver docs/editor-topology.md. */
@@ -25,8 +15,8 @@ export function validateConnection(connection: Connection, nodes: TopologyNode[]
     return { ok: false, message: "Conexão inválida" };
   }
 
-  const sourceTensao = tensaoNaConexao(sourceNode, connection.sourceHandle);
-  const targetTensao = tensaoNaConexao(targetNode, connection.targetHandle);
+  const sourceTensao = tensaoDoTerminal(sourceNode, connection.sourceHandle);
+  const targetTensao = tensaoDoTerminal(targetNode, connection.targetHandle);
 
   if (sourceTensao !== undefined && targetTensao !== undefined && sourceTensao !== targetTensao) {
     return { ok: false, message: "Não é possível conectar barras de tensões diferentes sem transformador" };

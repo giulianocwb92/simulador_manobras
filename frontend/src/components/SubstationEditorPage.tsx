@@ -57,6 +57,7 @@ export function SubstationEditorPage() {
   const setTopology = useEditorStore((s) => s.setTopology);
   const addNode = useEditorStore((s) => s.addNode);
   const updateNodeData = useEditorStore((s) => s.updateNodeData);
+  const rotateSelectedNodes = useEditorStore((s) => s.rotateSelectedNodes);
   const reset = useEditorStore((s) => s.reset);
 
   const [ownsLock, setOwnsLock] = useState(false);
@@ -111,6 +112,18 @@ export function SubstationEditorPage() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [id, currentUser, ownsLock]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!ownsLock) return;
+      if (event.ctrlKey && event.key.toLowerCase() === "r") {
+        event.preventDefault();
+        rotateSelectedNodes();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [ownsLock, rotateSelectedNodes]);
 
   async function save() {
     if (!id || !currentUser) return;
