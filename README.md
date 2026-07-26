@@ -85,6 +85,7 @@ npm run typecheck
 - **Ctrl+R**: rotaciona os componentes selecionados (0°/90°/180°/270°)
 - **Duplo-clique** num fio: remove a conexão
 - Grid snap de 6px em todo o canvas (6 divide o offset de 12px do terminal dos componentes, evitando cotovelos residuais nos wires)
+- Numa SE vazia, a câmera não reenquadra sozinha ao soltar o primeiro componente — o `fitView` do React Flow só é ativado quando a SE já chega com nós salvos (ver `Canvas.tsx`)
 
 ## Modos do editor
 

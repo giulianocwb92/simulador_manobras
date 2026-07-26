@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ReactFlowProvider, type Edge } from "@xyflow/react";
@@ -90,6 +90,16 @@ export function SubstationEditorPage() {
     queryFn: () => substationsService.get(id!),
     enabled: !!id,
   });
+
+  // Calculado uma única vez, na primeira vez que a SE chega — não pode vir de
+  // `nodes` da store (que ainda está vazia nesse exato momento, populada só
+  // depois via `setTopology` no efeito abaixo) nem ser recalculado depois
+  // (autosave/troca de query cache não deve ligar/desligar isso). Ver
+  // Canvas.tsx `fitView` pra motivo completo.
+  const hasInitialNodesRef = useRef<boolean | null>(null);
+  if (substation && hasInitialNodesRef.current === null) {
+    hasInitialNodesRef.current = substation.topology.nodes.length > 0;
+  }
 
   const { data: allSubstations } = useQuery({
     queryKey: ["substations"],
@@ -409,6 +419,7 @@ export function SubstationEditorPage() {
             <Canvas
               readOnly={!ownsLock || mode === "FINALIZADA"}
               recording={ownsLock && mode === "GRAVANDO"}
+              fitView={hasInitialNodesRef.current ?? false}
               onNodeDoubleClick={handleNodeDoubleClick}
               onEquipmentToggle={handleEquipmentToggle}
               onConnectError={setConnectError}

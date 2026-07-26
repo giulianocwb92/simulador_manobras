@@ -14,6 +14,15 @@ interface CanvasProps {
   readOnly?: boolean;
   /** Modo GRAVANDO: clique em DJ/CH/Religador alterna estado em vez de abrir o modal de propriedades. */
   recording?: boolean;
+  /**
+   * Só deve ser `true` quando a SE carregada já tinha nós ao montar o canvas.
+   * `<ReactFlow fitView>` fica com um "fit" pendente até o canvas ganhar nós
+   * medíveis — numa SE vazia isso significa que o fit some do mount e só
+   * dispara no momento em que o usuário solta o PRIMEIRO componente,
+   * reenquadrando a câmera de surpresa bem no meio da interação dele. Numa SE
+   * vazia não tem o que encaixar mesmo, então mantemos desligado.
+   */
+  fitView?: boolean;
   onNodeDoubleClick?: (nodeId: string) => void;
   onEquipmentToggle?: (nodeId: string) => void;
   onConnectError?: (message: string) => void;
@@ -23,6 +32,7 @@ interface CanvasProps {
 export function Canvas({
   readOnly = false,
   recording = false,
+  fitView = true,
   onNodeDoubleClick,
   onEquipmentToggle,
   onConnectError,
@@ -242,7 +252,7 @@ export function Canvas({
         nodesConnectable={!readOnly && !wireMode && !recording}
         elementsSelectable={!readOnly}
         style={wireMode ? { cursor: "crosshair" } : undefined}
-        fitView
+        fitView={fitView}
       >
         <Background gap={GRID} />
         <Controls />
