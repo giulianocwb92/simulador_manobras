@@ -14,6 +14,9 @@ GET    /substations/{id}/versions/{v}   → topologia de versão específica
 
 POST   /substations/{id}/lock           → trava SE para edição (body: {user_id})
 DELETE /substations/{id}/lock           → libera lock (body: {user_id})
+POST   /substations/{id}/unlock         → alias de DELETE /lock (mesmo body), usado só pelo
+                                           `navigator.sendBeacon` do frontend ao fechar a aba —
+                                           sendBeacon só envia POST, não dá pra customizar método
 ```
 
 ### Schema Substation

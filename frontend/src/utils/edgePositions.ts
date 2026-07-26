@@ -30,10 +30,13 @@ export function getTerminalPosition(kind: EquipmentKind, terminalId: string, rot
 }
 
 /**
- * Posição de saída dos handles dinâmicos de uma barra. Na rotação 0°/180° a
- * barra é vertical (handles saem pela direita); em 90°/270° é horizontal
- * (handles saem pela base).
+ * Posição de saída de um handle dinâmico de barra. Na rotação 0°/180° a barra
+ * é vertical (lado "fim" = direita, "inicio" = esquerda); em 90°/270° é
+ * horizontal (lado "fim" = baixo, "inicio" = cima). Barras suportam handles
+ * dos dois lados simultaneamente.
  */
-export function getBarraHandlePosition(rotation: Rotation = 0): Position {
-  return rotation === 90 || rotation === 270 ? Position.Bottom : Position.Right;
+export function getBarraHandlePosition(rotation: Rotation = 0, lado: "inicio" | "fim" = "fim"): Position {
+  const isHorizontal = rotation === 90 || rotation === 270;
+  if (isHorizontal) return lado === "inicio" ? Position.Top : Position.Bottom;
+  return lado === "inicio" ? Position.Left : Position.Right;
 }

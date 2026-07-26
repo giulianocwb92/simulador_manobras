@@ -81,7 +81,7 @@ npm run typecheck
 - **W**: ativa a ferramenta Wire (clique para iniciar o fio, clique novamente para concluir); **Esc** ou **Delete** cancela
 - **Ctrl+R**: rotaciona os componentes selecionados (0°/90°/180°/270°)
 - **Duplo-clique** num fio: remove a conexão
-- Grid snap de 10px em todo o canvas
+- Grid snap de 6px em todo o canvas (6 divide o offset de 12px do terminal dos componentes, evitando cotovelos residuais nos wires)
 
 ## Estrutura de pastas
 

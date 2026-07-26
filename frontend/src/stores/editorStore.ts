@@ -8,7 +8,7 @@ import {
   type XYPosition,
 } from "@xyflow/react";
 import { create } from "zustand";
-import type { BarraData, EquipmentKind, Rotation, TopologyNode } from "../types/topology";
+import type { BarraData, BarraHandleLado, EquipmentKind, Rotation, TopologyNode } from "../types/topology";
 
 export type EditorMode = "CONFIGURACAO" | "GRAVANDO" | "FINALIZADA";
 
@@ -27,6 +27,26 @@ export interface WirePending {
   sourceNodeId: string;
   sourceHandleId: string;
   sourcePosition: XYPosition;
+}
+
+/**
+ * Remove das barras os handles dinâmicos (criados via addBarHandle) que não têm
+ * mais nenhuma aresta ligada — evita handle "fantasma" (e barra que não encolhe)
+ * depois que o wire que o criou é apagado.
+ */
+function pruneUnusedBarHandles(nodes: TopologyNode[], edges: Edge[]): TopologyNode[] {
+  const usedHandleIds = new Set<string>();
+  for (const edge of edges) {
+    if (edge.sourceHandle) usedHandleIds.add(`${edge.source}:${edge.sourceHandle}`);
+    if (edge.targetHandle) usedHandleIds.add(`${edge.target}:${edge.targetHandle}`);
+  }
+  return nodes.map((node) => {
+    if (node.type !== "barra") return node;
+    const barraData = node.data as BarraData;
+    const handles = (barraData.handles ?? []).filter((h) => usedHandleIds.has(`${node.id}:${h.id}`));
+    if (handles.length === (barraData.handles ?? []).length) return node;
+    return { ...node, data: { ...node.data, handles } } as TopologyNode;
+  });
 }
 
 interface EditorState {
@@ -49,7 +69,7 @@ interface EditorState {
   setWireMode: (active: boolean) => void;
   startWire: (pending: WirePending) => void;
   cancelWire: () => void;
-  addBarHandle: (nodeId: string, position: number) => string;
+  addBarHandle: (nodeId: string, position: number, lado: BarraHandleLado) => string;
   reset: () => void;
 }
 
@@ -62,9 +82,13 @@ export const useEditorStore = create<EditorState>((set) => ({
   wirePending: null,
   setMode: (mode) => set({ mode }),
   setActiveSubstationId: (id) => set({ activeSubstationId: id }),
-  setTopology: (nodes, edges) => set({ nodes, edges }),
+  setTopology: (nodes, edges) => set({ nodes: pruneUnusedBarHandles(nodes, edges), edges }),
   onNodesChange: (changes) => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
-  onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
+  onEdgesChange: (changes) =>
+    set((state) => {
+      const edges = applyEdgeChanges(changes, state.edges);
+      return { edges, nodes: pruneUnusedBarHandles(state.nodes, edges) };
+    }),
   addNode: (node) => set((state) => ({ nodes: [...state.nodes, node] })),
   updateNodeData: (id, data) =>
     set((state) => ({
@@ -87,7 +111,11 @@ export const useEditorStore = create<EditorState>((set) => ({
         },
       ],
     })),
-  removeEdge: (edgeId) => set((state) => ({ edges: state.edges.filter((edge) => edge.id !== edgeId) })),
+  removeEdge: (edgeId) =>
+    set((state) => {
+      const edges = state.edges.filter((edge) => edge.id !== edgeId);
+      return { edges, nodes: pruneUnusedBarHandles(state.nodes, edges) };
+    }),
   rotateSelectedNodes: () =>
     set((state) => ({
       nodes: state.nodes.map((node) => {
@@ -101,13 +129,13 @@ export const useEditorStore = create<EditorState>((set) => ({
     set((state) => ({ wireMode: active, wirePending: active ? state.wirePending : null })),
   startWire: (pending) => set({ wirePending: pending }),
   cancelWire: () => set({ wirePending: null }),
-  addBarHandle: (nodeId, position) => {
+  addBarHandle: (nodeId, position, lado) => {
     const handleId = `h-${crypto.randomUUID()}`;
     set((state) => ({
       nodes: state.nodes.map((node) => {
         if (node.id !== nodeId || node.type !== "barra") return node;
         const barraData = node.data as BarraData;
-        const handles = [...(barraData.handles ?? []), { id: handleId, position }];
+        const handles = [...(barraData.handles ?? []), { id: handleId, position, lado }];
         return { ...node, data: { ...node.data, handles } } as TopologyNode;
       }),
     }));

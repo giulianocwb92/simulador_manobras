@@ -43,7 +43,7 @@ export function PropertiesModal({
   const [numero, setNumero] = useState((initialData?.numero as string) ?? "");
   const [identificador, setIdentificador] = useState((initialData?.identificador as string) ?? "");
   const [estado, setEstado] = useState<"aberto" | "fechado">(
-    (initialData?.estado as "aberto" | "fechado") ?? "fechado"
+    (initialData?.estado as "aberto" | "fechado") ?? "aberto"
   );
   const [tensao, setTensao] = useState<VoltageLevel>((initialData?.tensao as VoltageLevel) ?? 138);
   const [tensaoAt, setTensaoAt] = useState<VoltageLevel>((initialData?.tensao_at as VoltageLevel) ?? 138);
@@ -193,8 +193,8 @@ export function PropertiesModal({
               onChange={(e) => setEstado(e.target.value as "aberto" | "fechado")}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
             >
-              <option value="fechado">Fechado</option>
               <option value="aberto">Aberto</option>
+              <option value="fechado">Fechado</option>
             </select>
           </label>
         )}

@@ -10,13 +10,19 @@ export const substationsService = {
   lock: (id: string, userId: string) => api.post<Substation>(`/substations/${id}/lock`, { user_id: userId }),
   unlock: (id: string, userId: string) => api.delete<Substation>(`/substations/${id}/lock`, { user_id: userId }),
 
-  /** Fire-and-forget: usado em beforeunload/unmount, onde não dá pra esperar a resposta. */
+  /**
+   * Fire-and-forget: usado em beforeunload/unmount, onde não dá pra esperar a resposta.
+   * Um DELETE com corpo JSON é cross-origin "não simples" (exige preflight CORS) — no
+   * beforeunload esse round-trip pode não terminar a tempo de a aba fechar, perdendo o
+   * unlock silenciosamente. `navigator.sendBeacon` resolve isso: só manda POST (por
+   * isso o alias `/unlock` no backend) e, com um Blob sem `type`, vai sem cabeçalho
+   * Content-Type — sem método/header "não simples", vira requisição simples e não
+   * precisa de preflight.
+   */
   releaseLockBeacon: (id: string, userId: string) => {
-    fetch(`${API_URL}/substations/${id}/lock`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId }),
-      keepalive: true,
-    }).catch(() => {});
+    const url = `${API_URL}/substations/${id}/unlock`;
+    const body = new Blob([JSON.stringify({ user_id: userId })]);
+    if (navigator.sendBeacon?.(url, body)) return;
+    fetch(url, { method: "POST", body, keepalive: true }).catch(() => {});
   },
 };

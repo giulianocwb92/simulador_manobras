@@ -56,7 +56,10 @@ async def _get_substation_or_404(
 @router.get("", response_model=list[SubstationRead])
 async def list_substations(db: AsyncSession = Depends(get_db)) -> list[Substation]:
     result = await db.execute(select(Substation).options(selectinload(Substation.locked_by_user)).order_by(Substation.name))
-    return list(result.scalars().all())
+    substations = list(result.scalars().all())
+    # Sem isso, a listagem continua mostrando "travada" além dos 30min de timeout
+    # até alguém abrir a SE específica (única rota que checava expiração antes).
+    return [await substation_service.release_expired_lock(db, substation) for substation in substations]
 
 
 @router.post("", response_model=SubstationRead, status_code=status.HTTP_201_CREATED)
@@ -133,12 +136,26 @@ async def lock_substation(
         raise HTTPException(status.HTTP_423_LOCKED, _locked_error_detail(exc)) from exc
 
 
-@router.delete("/{substation_id}/lock", response_model=SubstationRead)
-async def unlock_substation(
-    substation_id: uuid.UUID, payload: LockRequest, db: AsyncSession = Depends(get_db)
-) -> Substation:
+async def _release_lock_or_404(db: AsyncSession, substation_id: uuid.UUID, payload: LockRequest) -> Substation:
     substation = await _get_substation_or_404(db, substation_id, for_update=True)
     try:
         return await release_lock(db, substation, payload.user_id)
     except LockedError as exc:
         raise HTTPException(status.HTTP_423_LOCKED, _locked_error_detail(exc)) from exc
+
+
+@router.delete("/{substation_id}/lock", response_model=SubstationRead)
+async def unlock_substation(
+    substation_id: uuid.UUID, payload: LockRequest, db: AsyncSession = Depends(get_db)
+) -> Substation:
+    return await _release_lock_or_404(db, substation_id, payload)
+
+
+@router.post("/{substation_id}/unlock", response_model=SubstationRead)
+async def unlock_substation_beacon(
+    substation_id: uuid.UUID, payload: LockRequest, db: AsyncSession = Depends(get_db)
+) -> Substation:
+    """Alias de DELETE /lock, usado só pelo `navigator.sendBeacon` no frontend ao
+    fechar a aba: sendBeacon só envia POST (não dá pra customizar método/headers),
+    diferente do DELETE+JSON usado nas demais chamadas de unlock."""
+    return await _release_lock_or_404(db, substation_id, payload)

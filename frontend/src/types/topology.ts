@@ -14,10 +14,19 @@ interface BaseEquipmentData extends Record<string, unknown> {
 
 export type BarraTipo = "principal" | "transferencia" | "dupla";
 
+export type BarraHandleLado = "inicio" | "fim";
+
 export interface BarraHandle {
   id: string;
   /** Posição relativa ao longo da barra: 0.0 = início, 1.0 = fim. */
   position: number;
+  /**
+   * Lado da barra de onde o handle sai, perpendicular ao comprimento dela:
+   * "fim" (padrão, direita na vertical / baixo na horizontal) ou "inicio"
+   * (esquerda na vertical / cima na horizontal). Permite ligar circuitos dos
+   * dois lados da barra. Ausente em dados antigos → tratado como "fim".
+   */
+  lado?: BarraHandleLado;
 }
 
 export interface BarraData extends BaseEquipmentData {

@@ -3,9 +3,10 @@ import { Background, ConnectionMode, Controls, MiniMap, ReactFlow, useReactFlow,
 import "@xyflow/react/dist/style.css";
 import { useEditorStore } from "../../stores/editorStore";
 import { nodeTypes } from "../../nodes";
-import { VOLTAGE_COLORS, type EquipmentKind } from "../../types/topology";
+import { VOLTAGE_COLORS, type BarraData, type EquipmentKind } from "../../types/topology";
 import { WIRE_UNCONNECTED_STROKE } from "../../constants/voltageColors";
 import { computeVoltageMap, portKey } from "../../utils/energization";
+import { computeBarraLength, GRID } from "../../utils/barraLayout";
 import { validateConnection } from "./connectionValidation";
 import { WirePreview } from "./WirePreview";
 
@@ -102,13 +103,23 @@ export function Canvas({ readOnly = false, onNodeDoubleClick, onConnectError, on
         const rotation = (node.data as { rotation?: number }).rotation ?? 0;
         const isHorizontal = rotation === 90 || rotation === 270;
         const rect = barraEl.getBoundingClientRect();
-        const raw = isHorizontal
-          ? (event.clientX - rect.left) / rect.width
-          : (event.clientY - rect.top) / rect.height;
-        const position = Math.min(1, Math.max(0, raw));
-        const handleId = addBarHandle(nodeId, position);
-        const flowPosition = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-        handleWireTarget(nodeId, handleId, flowPosition);
+        // Posição ao longo da barra calculada em espaço de fluxo (não em px de
+        // tela, que variam com o zoom) e arredondada pro mesmo grid dos nós —
+        // sem isso o handle cai num pixel qualquer e o wire nunca fica reto.
+        const flowClick = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+        const length = computeBarraLength(((node.data as BarraData).handles ?? []).length);
+        const along = isHorizontal ? flowClick.x - node.position.x : flowClick.y - node.position.y;
+        const snappedAlong = Math.min(length, Math.max(0, Math.round(along / GRID) * GRID));
+        const position = length === 0 ? 0 : snappedAlong / length;
+        // Perpendicular ao comprimento: metade de cá = "inicio" (esquerda/cima),
+        // metade de lá = "fim" (direita/baixo) — decide de qual lado da barra
+        // o handle novo sai (ver Correção "handles dos dois lados").
+        const perpRaw = isHorizontal
+          ? (event.clientY - rect.top) / rect.height
+          : (event.clientX - rect.left) / rect.width;
+        const lado: "inicio" | "fim" = perpRaw < 0.5 ? "inicio" : "fim";
+        const handleId = addBarHandle(nodeId, position, lado);
+        handleWireTarget(nodeId, handleId, flowClick);
       }
     },
     [wireMode, nodes, addBarHandle, handleWireTarget, screenToFlowPosition]
@@ -181,14 +192,14 @@ export function Canvas({ readOnly = false, onNodeDoubleClick, onConnectError, on
         connectionMode={ConnectionMode.Loose}
         deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
         snapToGrid
-        snapGrid={[10, 10]}
+        snapGrid={[GRID, GRID]}
         nodesDraggable={!readOnly && !wireMode}
         nodesConnectable={!readOnly && !wireMode}
         elementsSelectable={!readOnly}
         style={wireMode ? { cursor: "crosshair" } : undefined}
         fitView
       >
-        <Background gap={10} />
+        <Background gap={GRID} />
         <Controls />
         <MiniMap pannable zoomable />
       </ReactFlow>

@@ -2,12 +2,18 @@ import { useEffect } from "react";
 import { Handle, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import { WIRE_UNCONNECTED_STROKE } from "../constants/voltageColors";
 import { VOLTAGE_COLORS, type BarraNodeType, type BarraTipo } from "../types/topology";
+import { computeBarraLength } from "../utils/barraLayout";
 import { getBarraHandlePosition } from "../utils/edgePositions";
-import { getLabelPosition } from "../utils/labelPosition";
+import { LABEL_POSITION } from "../utils/labelPosition";
 import { useNodeRotation } from "./useNodeRotation";
 
-// Comprimento padrão da barra na orientação vertical (rotation = 0).
-const BARRA_LENGTH = 200;
+// Largura da área clicável pra criar handle (bem maior que a barra em si, fina
+// demais pra clicar com precisão) — também é o que decide de qual lado
+// (início/fim) o novo handle sai, ver Canvas.tsx.
+const HIT_AREA_WIDTH = 30;
+// Afasta o ponto/handle um pouco da barra em vez de encostar nela, como era
+// antes — só estética, o wire continua reto (é a mesma direção da barra).
+const HANDLE_GAP = 6;
 
 const STROKE_WIDTH: Record<BarraTipo, number> = {
   principal: 6,
@@ -22,12 +28,14 @@ export function BarraNode({ id, data, selected }: NodeProps<BarraNodeType>) {
   // (Correção 3 — caminho fechado até ela); fora disso fica cinza.
   const color = data.tipo === "transferencia" ? WIRE_UNCONNECTED_STROKE : VOLTAGE_COLORS[data.tensao];
   const width = STROKE_WIDTH[data.tipo];
-  const handlePosition = getBarraHandlePosition(rotation);
   const isHorizontal = rotation === 90 || rotation === 270;
   const handles = data.handles ?? [];
+  const length = computeBarraLength(handles.length);
 
   // Handles dinâmicos são criados em runtime (ver Correção 3) — o React Flow só
-  // registra a posição de um handle novo no node depois de remedir o DOM.
+  // registra a posição de um handle novo no node depois de remedir o DOM. O
+  // comprimento da barra também muda junto (cresce com o nº de circuitos), então
+  // precisa remedir nos dois casos — ambos derivam de handles.length.
   const updateNodeInternals = useUpdateNodeInternals();
   useEffect(() => {
     updateNodeInternals(id);
@@ -36,34 +44,53 @@ export function BarraNode({ id, data, selected }: NodeProps<BarraNodeType>) {
   return (
     <div
       className="relative flex items-center justify-center"
-      style={{ width: isHorizontal ? BARRA_LENGTH : width, height: isHorizontal ? width : BARRA_LENGTH }}
+      style={{ width: isHorizontal ? length : width, height: isHorizontal ? width : length }}
     >
       <div style={wrapperStyle}>
         <div
-          data-barra-id={id}
           className={`rounded-full ${selected ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
-          style={{ width, height: BARRA_LENGTH, backgroundColor: color }}
+          style={{ width, height: length, backgroundColor: color }}
         />
       </div>
 
-      {handles.map((h) => (
-        <Handle
-          key={h.id}
-          id={h.id}
-          type="source"
-          position={handlePosition}
-          style={
-            isHorizontal
-              ? { left: `${h.position * 100}%`, top: "100%" }
-              : { top: `${h.position * 100}%`, left: "100%" }
-          }
-          className="!z-10 !bg-slate-700"
-        />
-      ))}
+      {/* Área clicável mais larga que a barra em si (fina demais pra clicar
+          com precisão), centrada nela — a metade de cada lado decide se o
+          handle novo sai pelo início ou fim (ver Canvas.tsx). */}
+      <div
+        data-barra-id={id}
+        className="absolute"
+        style={{
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: isHorizontal ? length : HIT_AREA_WIDTH,
+          height: isHorizontal ? HIT_AREA_WIDTH : length,
+        }}
+      />
+
+      {handles.map((h) => {
+        const lado = h.lado ?? "fim";
+        const position = getBarraHandlePosition(rotation, lado);
+        const cross = lado === "inicio" ? `${-HANDLE_GAP}px` : `calc(100% + ${HANDLE_GAP}px)`;
+        return (
+          <Handle
+            key={h.id}
+            id={h.id}
+            type="source"
+            position={position}
+            style={
+              isHorizontal
+                ? { left: `${h.position * 100}%`, top: cross, transform: "translate(-50%, -50%)" }
+                : { top: `${h.position * 100}%`, left: cross, transform: "translate(-50%, -50%)" }
+            }
+            className="!z-10 !bg-slate-700"
+          />
+        );
+      })}
 
       <span
-        className="absolute flex items-center gap-1 whitespace-nowrap text-xs font-semibold"
-        style={{ ...getLabelPosition(rotation), color }}
+        className="absolute flex items-center gap-1 whitespace-nowrap text-[9px] font-semibold"
+        style={{ ...LABEL_POSITION, color }}
       >
         {data.fonte && <span title="Barra fonte">⚡</span>}
         {data.nome} — {data.tensao} kV
