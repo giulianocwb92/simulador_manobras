@@ -14,7 +14,9 @@ import { Toolbar } from "./editor/Toolbar";
 import { LockBanner } from "./editor/LockBanner";
 import { PropertiesModal, type PropertiesModalSubmitPayload } from "./editor/PropertiesModal";
 import { StepsPanel } from "./maneuver/StepsPanel";
+import { ManeuverHeaderForm } from "./maneuver/ManeuverHeaderForm";
 import { generateStepDescription, TOGGLEABLE_KINDS } from "../utils/maneuverStepText";
+import { maneuversService } from "../services/maneuvers";
 import type { EquipmentKind, EquipmentState, TopologyNode } from "../types/topology";
 import type { ManeuverAction } from "../types/maneuver";
 import type { Substation, Topology } from "../types/substation";
@@ -71,6 +73,10 @@ export function SubstationEditorPage() {
   const unloadSecondarySubstation = useEditorStore((s) => s.unloadSecondarySubstation);
   const addManeuverStep = useManeuverStore((s) => s.addStep);
   const resetManeuver = useManeuverStore((s) => s.reset);
+  const maneuverId = useManeuverStore((s) => s.maneuverId);
+  const setManeuverId = useManeuverStore((s) => s.setManeuverId);
+  const maneuverStatus = useManeuverStore((s) => s.status);
+  const setManeuverStatus = useManeuverStore((s) => s.setStatus);
 
   const [ownsLock, setOwnsLock] = useState(false);
   const [lockedByName, setLockedByName] = useState<string | null>(null);
@@ -202,8 +208,10 @@ export function SubstationEditorPage() {
   }
 
   // Modo GRAVANDO (ver docs/editor-topology.md): clique num DJ/CH/Religador
-  // alterna o estado e gera automaticamente um passo na manobra.
-  function handleEquipmentToggle(nodeId: string) {
+  // alterna o estado e gera automaticamente um passo na manobra, persistido
+  // na hora (mesmo espírito do auto-save da topologia — não perder passos se
+  // a aba fechar no meio da gravação).
+  async function handleEquipmentToggle(nodeId: string) {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node || !TOGGLEABLE_KINDS.has(node.type as EquipmentKind)) return;
     const data = node.data as { estado?: EquipmentState; label?: string };
@@ -220,24 +228,52 @@ export function SubstationEditorPage() {
       : undefined;
     const description = generateStepDescription(node.type as EquipmentKind, data.label, acao, siglaSe);
     if (!description) return;
+
+    const payload = { description, equipment_id: nodeId, action: acao, origin: "SIMULADOR" as const };
+    const currentManeuverId = useManeuverStore.getState().maneuverId;
+    if (currentManeuverId) {
+      try {
+        const persisted = await maneuversService.addStep(currentManeuverId, payload);
+        addManeuverStep(persisted);
+        return;
+      } catch {
+        setConnectError("Não foi possível salvar o passo — seguindo só localmente.");
+      }
+    }
     const currentSteps = useManeuverStore.getState().steps;
-    addManeuverStep({
-      id: crypto.randomUUID(),
-      order: currentSteps.length + 1,
-      description,
-      equipment_id: nodeId,
-      action: acao,
-      origin: "SIMULADOR",
-    });
+    addManeuverStep({ id: crypto.randomUUID(), order: currentSteps.length + 1, ...payload });
   }
 
-  function handleStartRecording() {
+  async function handleStartRecording() {
     resetManeuver();
     setMode("GRAVANDO");
+    if (!id || !substation) return;
+    const substationIds = [id, ...(secondarySubstation ? [secondarySubstation.id] : [])];
+    try {
+      const created = await maneuversService.create({
+        title: `Manobra ${substation.name}`,
+        created_by: currentUser?.id ?? null,
+        substation_ids: substationIds,
+      });
+      setManeuverId(created.id);
+      setManeuverStatus(created.status);
+    } catch {
+      setConnectError("Não foi possível criar o registro da manobra — os passos ficarão só locais, sem salvar.");
+    }
   }
 
   function handleFinishRecording() {
     setMode("FINALIZADA");
+  }
+
+  async function handleFinalizeManeuver() {
+    if (!maneuverId) return;
+    try {
+      const finalized = await maneuversService.finalize(maneuverId);
+      setManeuverStatus(finalized.status);
+    } catch {
+      setConnectError("Não foi possível finalizar a manobra.");
+    }
   }
 
   const substationOptions = (allSubstations ?? []).filter((s) => s.id !== id).map((s) => ({ id: s.id, name: s.name }));
@@ -311,7 +347,21 @@ export function SubstationEditorPage() {
                 </button>
               </>
             )}
-            {mode === "FINALIZADA" && <span className="text-xs font-medium text-slate-500">Manobra finalizada</span>}
+            {mode === "FINALIZADA" &&
+              (maneuverStatus === "FINALIZADA" ? (
+                <span className="text-xs font-medium text-slate-500">Manobra finalizada</span>
+              ) : (
+                <>
+                  <span className="text-xs font-medium text-slate-500">Editando manobra</span>
+                  <button
+                    type="button"
+                    onClick={handleFinalizeManeuver}
+                    className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+                  >
+                    Finalizar Manobra
+                  </button>
+                </>
+              ))}
           </div>
         )}
       </header>
@@ -355,7 +405,12 @@ export function SubstationEditorPage() {
             />
           </ReactFlowProvider>
         </div>
-        {(mode === "GRAVANDO" || mode === "FINALIZADA") && <StepsPanel />}
+        {(mode === "GRAVANDO" || mode === "FINALIZADA") && (
+          <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-white">
+            {mode === "FINALIZADA" && <ManeuverHeaderForm readOnly={maneuverStatus === "FINALIZADA"} />}
+            <StepsPanel readOnly={mode === "GRAVANDO" || maneuverStatus === "FINALIZADA"} />
+          </aside>
+        )}
       </div>
 
       {modalState && (

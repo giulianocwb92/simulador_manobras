@@ -1,5 +1,6 @@
 export type ManeuverAction = "ABRIR" | "FECHAR";
 export type ManeuverStepOrigin = "SIMULADOR" | "MANUAL";
+export type ManeuverStatus = "RASCUNHO" | "FINALIZADA";
 
 export interface ManeuverStep {
   id: string;
@@ -17,4 +18,15 @@ export interface ManeuverHeader {
   area: string | null;
   substations: string[];
   descricao_isolamento: string | null;
+}
+
+export interface Maneuver {
+  id: string;
+  title: string;
+  status: ManeuverStatus;
+  header: ManeuverHeader;
+  steps: ManeuverStep[];
+  created_by: string | null;
+  created_at: string;
+  finalized_at: string | null;
 }

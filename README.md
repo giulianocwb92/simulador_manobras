@@ -20,11 +20,12 @@ a descrição textual de cada passo e exportar o resultado final em PDF.
 🚧 Em desenvolvimento — ver checklist de fases em [`docs/implementation-plan.md`](docs/implementation-plan.md).
 
 - [x] FASE 1 — Infraestrutura (Docker Compose, Dockerfiles)
-- [x] FASE 2 — Backend: fundação (models, Alembic, schemas, lock de edição, routers `users`/`substations`)
+- [x] FASE 2 — Backend: fundação (models, Alembic, schemas, lock de edição, routers `users`/`substations`/`maneuvers`)
 - [x] FASE 3 — Frontend: estrutura base (React Query, Zustand, Tailwind, página inicial)
 - [x] FASE 4 — Editor de topologia (React Flow, drag-and-drop, validação de conexão, lock visual, auto-save)
-- [x] FASE 5 — Elementos provisórios (Jumper, Chave provisória — falta incorporar à topologia base ao finalizar a manobra, depende do botão "Finalizar Manobra" da FASE 7)
-- [ ] FASE 6 — Simulação de manobra (gravação de passos com geração automática de texto e painel em tempo real prontos; falta suporte a uma 2ª subestação no mesmo canvas)
+- [x] FASE 5 — Elementos provisórios (Jumper, Chave provisória — falta incorporar à topologia base ao finalizar a manobra)
+- [x] FASE 6 — Simulação de manobra (gravação de passos com geração automática de texto, painel em tempo real, suporte a uma 2ª subestação no mesmo canvas)
+- [x] FASE 7 — Edição da manobra (cabeçalho, editar/reordenar/deletar passos, passo manual, finalizar — tudo persistido via API)
 - [ ] demais fases em [`docs/implementation-plan.md`](docs/implementation-plan.md)
 
 ## Como rodar
@@ -91,7 +92,16 @@ npm run typecheck
   uma manobra — clicar num disjuntor, chave ou religador alterna o estado e gera
   automaticamente um passo com a descrição textual padrão, exibido em tempo real no painel
   lateral direito
-- **"Finalizar Gravação"**: encerra o registro; o canvas fica somente leitura
+- **"Finalizar Gravação"**: encerra o registro; o canvas fica somente leitura e o painel
+  lateral passa a permitir editar a manobra: reordenar passos (arrastar), editar texto,
+  deletar, adicionar passo manual, e preencher o cabeçalho (número, data, responsável,
+  área, descrição do isolamento) — tudo salvo na API a cada alteração
+- **"Finalizar Manobra"**: chama `POST /maneuvers/{id}/finalize` — a manobra fica
+  permanentemente travada para edição (diferente do "Finalizar Gravação" acima, que só
+  trava o canvas; este trava o registro da manobra em si)
+- Uma 2ª subestação pode ser carregada no mesmo canvas (seletor no cabeçalho), lado a
+  lado com a principal — útil pra manobras que envolvem duas SEs; os passos gerados a
+  partir dela vêm prefixados com a sigla correspondente
 
 ## Estrutura de pastas
 

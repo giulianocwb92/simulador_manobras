@@ -69,8 +69,9 @@ Marque cada item com [x] ao concluir.
 - [x] Implementar `nodes/ChaveProvisoriaNode.tsx` (nome corrigido de `ChaveProvisorialNode.tsx`)
 - [x] Modal ao adicionar: definir se é permanente ou temporário
 - [ ] Lógica: ao finalizar manobra, elementos permanentes são incorporados à topologia base
-      — depende do botão "Finalizar Manobra" da FASE 7, que ainda não existe; os nós já
-      carregam o flag `permanente` em `data`, pronto para essa lógica consumir
+      — o botão "Finalizar Manobra" já existe (FASE 7), mas só chama `POST
+      /maneuvers/{id}/finalize`; ainda falta, nesse handler, filtrar os nós com
+      `permanente: true` e persistir na(s) SE(s) envolvidas via `PUT /substations/{id}`
 
 ---
 
@@ -91,10 +92,21 @@ Marque cada item com [x] ao concluir.
 
 ## FASE 7 — Edição da manobra
 
-- [ ] Painel de edição de passos: reordenar (drag-and-drop), deletar, editar texto
-- [ ] Botão "Adicionar passo manual" → campo de texto livre inserido na posição desejada
-- [ ] Formulário de cabeçalho: número, data, responsável, área, descrição do isolamento
-- [ ] Botão "Finalizar Manobra" → status FINALIZADA, canvas fica readonly
+- [x] Router `maneuvers` no backend (`app/api/maneuvers.py` + `maneuver_service.py`) — a
+      FASE 2 tinha criado só os models/schemas de Maneuver, mas nunca o router; sem ele
+      não havia onde persistir nada desta fase, então foi implementado agora (create,
+      get, update header/status, steps CRUD + reorder, finalize — clone/pdf ficam pras
+      FASES 8/9)
+- [x] Painel de edição de passos: reordenar (drag-and-drop), deletar, editar texto —
+      cada ação sincroniza com a API na hora (mesmo espírito do auto-save da topologia)
+- [x] Botão "Adicionar passo manual" → campo de texto livre inserido no fim da lista
+      (posicionar em outro lugar é reordenar por drag-and-drop depois de adicionar)
+- [x] Formulário de cabeçalho: número, data, responsável, área, descrição do isolamento
+      (salva por campo, no blur)
+- [x] Botão "Finalizar Manobra" → `POST /maneuvers/{id}/finalize`, status FINALIZADA;
+      canvas já fica readonly desde a FASE 6 (botão "Finalizar Gravação" muda
+      `editorStore.mode`, um estado local do canvas — diferente do status da manobra no
+      backend, que é o que esse botão novo controla)
 
 ---
 

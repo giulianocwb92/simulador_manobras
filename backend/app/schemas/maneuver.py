@@ -33,6 +33,10 @@ class ManeuverStepRead(BaseModel):
     origin: ManeuverStepOrigin
 
 
+class ManeuverStepUpdate(BaseModel):
+    description: str
+
+
 class ManeuverStepReorder(BaseModel):
     order: list[uuid.UUID]
 
@@ -40,6 +44,11 @@ class ManeuverStepReorder(BaseModel):
 class ManeuverCreate(BaseModel):
     title: str
     header: ManeuverHeader = Field(default_factory=ManeuverHeader)
+    created_by: uuid.UUID | None = None
+    # SE(s) envolvidas na manobra (1 para SE única, 2 quando a gravação carregou uma
+    # 2ª SE no canvas — ver editorStore.secondarySubstation). Cada uma é vinculada à
+    # sua versão atual no momento da criação (ManeuverSubstation.substation_version).
+    substation_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class ManeuverUpdate(BaseModel):
