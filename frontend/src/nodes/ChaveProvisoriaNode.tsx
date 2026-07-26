@@ -1,10 +1,10 @@
 import { Handle, type NodeProps } from "@xyflow/react";
-import type { CHNodeType } from "../types/topology";
+import type { ChaveProvisoriaNodeType } from "../types/topology";
 import { getTerminalPosition } from "../utils/edgePositions";
 import { getEquipmentLabelPosition } from "../utils/labelPosition";
 import { useNodeRotation } from "./useNodeRotation";
 
-export function CHNode({ id, data, selected }: NodeProps<CHNodeType>) {
+export function ChaveProvisoriaNode({ id, data, selected }: NodeProps<ChaveProvisoriaNodeType>) {
   const aberto = data.estado === "aberto";
   const rotation = data.rotation ?? 0;
   const { containerStyle, wrapperStyle } = useNodeRotation(id, rotation, 48, 24);
@@ -19,7 +19,7 @@ export function CHNode({ id, data, selected }: NodeProps<CHNodeType>) {
       <Handle
         id="terminal-a"
         type="source"
-        position={getTerminalPosition("chave", "terminal-a", rotation)}
+        position={getTerminalPosition("chave_provisoria", "terminal-a", rotation)}
         className="!z-10 !bg-slate-600"
       />
       <div style={wrapperStyle}>
@@ -35,19 +35,33 @@ export function CHNode({ id, data, selected }: NodeProps<CHNodeType>) {
               <circle cx="45" cy="20" r="3.5" fill="white" stroke={color} strokeWidth="2" />
             </>
           )}
+          {/* Contorno tracejado âmbar identifica a chave como elemento provisório */}
+          <rect
+            x="2"
+            y="2"
+            width="76"
+            height="36"
+            rx="4"
+            fill="none"
+            stroke="#d97706"
+            strokeWidth="1.5"
+            strokeDasharray="5 3"
+          />
         </svg>
       </div>
       <Handle
         id="terminal-b"
         type="source"
-        position={getTerminalPosition("chave", "terminal-b", rotation)}
+        position={getTerminalPosition("chave_provisoria", "terminal-b", rotation)}
         className="!z-10 !bg-slate-600"
       />
       <span
-        className="absolute whitespace-nowrap text-[9px] font-medium text-slate-600"
+        title={data.permanente ? `${data.label} (permanente)` : data.label}
+        className="absolute whitespace-nowrap text-[9px] font-medium text-amber-700"
         style={getEquipmentLabelPosition(rotation)}
       >
         {data.label}
+        {data.permanente ? " (P)" : ""}
       </span>
     </div>
   );

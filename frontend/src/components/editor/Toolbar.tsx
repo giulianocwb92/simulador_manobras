@@ -34,6 +34,13 @@ const SECTIONS: { title: string; items: ComponentItem[] }[] = [
     title: "Linhas",
     items: [{ kind: "linha", label: "Linha", symbol: "→" }],
   },
+  {
+    title: "Provisórios",
+    items: [
+      { kind: "jumper", label: "Jumper", symbol: "⋯" },
+      { kind: "chave_provisoria", label: "Chave Provisória", symbol: "∕" },
+    ],
+  },
 ];
 
 export function Toolbar() {

@@ -21,6 +21,8 @@ const ROTATABLE_KINDS: ReadonlySet<EquipmentKind> = new Set([
   "tf3",
   "tp",
   "tc",
+  "jumper",
+  "chave_provisoria",
 ]);
 
 export interface WirePending {

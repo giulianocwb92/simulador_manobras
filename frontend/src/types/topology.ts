@@ -35,6 +35,13 @@ export interface BarraData extends BaseEquipmentData {
   tensao: VoltageLevel;
   nome: string;
   handles: BarraHandle[];
+  /**
+   * Tensão alcançada por propagação real (caminho fechado) até essa barra —
+   * só relevante pra `tipo: "transferencia"`, que não tem tensão própria fixa
+   * (ver BarraNode.tsx). Calculado a cada render em Canvas.tsx a partir de
+   * `computeVoltageMap`; não é persistido (não faz parte da topologia salva).
+   */
+  energizedTensao?: VoltageLevel;
 }
 
 export interface DJData extends BaseEquipmentData {
@@ -80,6 +87,21 @@ export interface TCData extends BaseEquipmentData {
   label: string;
 }
 
+export interface JumperData extends BaseEquipmentData {
+  label: string;
+  nome: string;
+  /** Provisórios permanentes são incorporados à topologia base ao finalizar a manobra. */
+  permanente: boolean;
+}
+
+export interface ChaveProvisoriaData extends BaseEquipmentData {
+  label: string;
+  nome: string;
+  estado: EquipmentState;
+  /** Provisórios permanentes são incorporados à topologia base ao finalizar a manobra. */
+  permanente: boolean;
+}
+
 export interface LinhaData extends Record<string, unknown> {
   label: string;
   nome: string;
@@ -96,7 +118,9 @@ export type EquipmentKind =
   | "religador"
   | "tp"
   | "tc"
-  | "linha";
+  | "linha"
+  | "jumper"
+  | "chave_provisoria";
 
 export type BarraNodeType = Node<BarraData, "barra">;
 export type DJNodeType = Node<DJData, "disjuntor">;
@@ -107,6 +131,8 @@ export type ReligadorNodeType = Node<ReligadorData, "religador">;
 export type TPNodeType = Node<TPData, "tp">;
 export type TCNodeType = Node<TCData, "tc">;
 export type LinhaNodeType = Node<LinhaData, "linha">;
+export type JumperNodeType = Node<JumperData, "jumper">;
+export type ChaveProvisoriaNodeType = Node<ChaveProvisoriaData, "chave_provisoria">;
 
 export type TopologyNode =
   | BarraNodeType
@@ -117,7 +143,12 @@ export type TopologyNode =
   | ReligadorNodeType
   | TPNodeType
   | TCNodeType
-  | LinhaNodeType;
+  | LinhaNodeType
+  | JumperNodeType
+  | ChaveProvisoriaNodeType;
+
+/** Tipos de equipamento cujo item, ao ser finalizado com `permanente = true`, é incorporado à topologia base. */
+export const PROVISIONAL_KINDS: ReadonlySet<EquipmentKind> = new Set(["jumper", "chave_provisoria"]);
 
 /**
  * Tensão associada a um terminal específico de um nó, usada tanto para

@@ -1,6 +1,8 @@
 import { BarraNode } from "./BarraNode";
+import { ChaveProvisoriaNode } from "./ChaveProvisoriaNode";
 import { CHNode } from "./CHNode";
 import { DJNode } from "./DJNode";
+import { JumperNode } from "./JumperNode";
 import { LinhaNode } from "./LinhaNode";
 import { ReligadorNode } from "./ReligadorNode";
 import { TCNode } from "./TCNode";
@@ -18,4 +20,6 @@ export const nodeTypes = {
   tp: TPNode,
   tc: TCNode,
   linha: LinhaNode,
+  jumper: JumperNode,
+  chave_provisoria: ChaveProvisoriaNode,
 };

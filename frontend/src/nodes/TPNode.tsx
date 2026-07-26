@@ -1,15 +1,18 @@
 import { Handle, type NodeProps } from "@xyflow/react";
 import type { TPNodeType } from "../types/topology";
 import { getTerminalPosition } from "../utils/edgePositions";
-import { LABEL_POSITION } from "../utils/labelPosition";
+import { getEquipmentLabelPosition } from "../utils/labelPosition";
 import { useNodeRotation } from "./useNodeRotation";
 
 export function TPNode({ id, data, selected }: NodeProps<TPNodeType>) {
   const rotation = data.rotation ?? 0;
-  const { wrapperStyle } = useNodeRotation(id, rotation);
+  const { containerStyle, wrapperStyle } = useNodeRotation(id, rotation, 24, 54);
 
   return (
-    <div className={`relative h-[54px] w-6 ${selected ? "rounded-sm ring-2 ring-blue-500 ring-offset-1" : ""}`}>
+    <div
+      className={`relative flex items-center justify-center ${selected ? "rounded-sm ring-2 ring-blue-500 ring-offset-1" : ""}`}
+      style={containerStyle}
+    >
       <Handle
         id="terminal-a"
         type="source"
@@ -17,7 +20,7 @@ export function TPNode({ id, data, selected }: NodeProps<TPNodeType>) {
         className="!z-10 !bg-slate-600"
       />
       <div style={wrapperStyle}>
-        <svg viewBox="0 0 40 90" className="h-[54px] w-6">
+        <svg viewBox="0 0 40 90" className="h-full w-full">
           <line x1="20" y1="0" x2="20" y2="16" stroke="#000000" strokeWidth="2" />
           <circle cx="20" cy="26" r="11" fill="none" stroke="#000000" strokeWidth="2" />
           <circle cx="20" cy="38" r="11" fill="none" stroke="#000000" strokeWidth="2" />
@@ -29,7 +32,7 @@ export function TPNode({ id, data, selected }: NodeProps<TPNodeType>) {
       </div>
       <span
         className="absolute whitespace-nowrap text-[9px] font-medium text-slate-600"
-        style={LABEL_POSITION}
+        style={getEquipmentLabelPosition(rotation)}
       >
         {data.label}
       </span>

@@ -23,7 +23,8 @@ a descrição textual de cada passo e exportar o resultado final em PDF.
 - [x] FASE 2 — Backend: fundação (models, Alembic, schemas, lock de edição, routers `users`/`substations`)
 - [x] FASE 3 — Frontend: estrutura base (React Query, Zustand, Tailwind, página inicial)
 - [x] FASE 4 — Editor de topologia (React Flow, drag-and-drop, validação de conexão, lock visual, auto-save)
-- [ ] FASE 5 — Elementos provisórios (Jumper, Chave provisória)
+- [x] FASE 5 — Elementos provisórios (Jumper, Chave provisória — falta incorporar à topologia base ao finalizar a manobra, depende do botão "Finalizar Manobra" da FASE 7)
+- [ ] FASE 6 — Simulação de manobra (gravação de passos com geração automática de texto e painel em tempo real prontos; falta suporte a uma 2ª subestação no mesmo canvas)
 - [ ] demais fases em [`docs/implementation-plan.md`](docs/implementation-plan.md)
 
 ## Como rodar
@@ -82,6 +83,15 @@ npm run typecheck
 - **Ctrl+R**: rotaciona os componentes selecionados (0°/90°/180°/270°)
 - **Duplo-clique** num fio: remove a conexão
 - Grid snap de 6px em todo o canvas (6 divide o offset de 12px do terminal dos componentes, evitando cotovelos residuais nos wires)
+
+## Modos do editor
+
+- **Configuração**: monta a topologia (arrastar componentes, conectar, editar propriedades, rotacionar)
+- **"Iniciar Gravação"**: trava a topologia (nada se move ou é adicionado) e passa a registrar
+  uma manobra — clicar num disjuntor, chave ou religador alterna o estado e gera
+  automaticamente um passo com a descrição textual padrão, exibido em tempo real no painel
+  lateral direito
+- **"Finalizar Gravação"**: encerra o registro; o canvas fica somente leitura
 
 ## Estrutura de pastas
 

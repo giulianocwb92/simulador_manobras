@@ -12,12 +12,22 @@ import { WirePreview } from "./WirePreview";
 
 interface CanvasProps {
   readOnly?: boolean;
+  /** Modo GRAVANDO: clique em DJ/CH/Religador alterna estado em vez de abrir o modal de propriedades. */
+  recording?: boolean;
   onNodeDoubleClick?: (nodeId: string) => void;
+  onEquipmentToggle?: (nodeId: string) => void;
   onConnectError?: (message: string) => void;
   onDropEquipment?: (kind: EquipmentKind, position: { x: number; y: number }) => void;
 }
 
-export function Canvas({ readOnly = false, onNodeDoubleClick, onConnectError, onDropEquipment }: CanvasProps) {
+export function Canvas({
+  readOnly = false,
+  recording = false,
+  onNodeDoubleClick,
+  onEquipmentToggle,
+  onConnectError,
+  onDropEquipment,
+}: CanvasProps) {
   const nodes = useEditorStore((s) => s.nodes);
   const edges = useEditorStore((s) => s.edges);
   const onNodesChange = useEditorStore((s) => s.onNodesChange);
@@ -130,10 +140,28 @@ export function Canvas({ readOnly = false, onNodeDoubleClick, onConnectError, on
       event.preventDefault();
       const kind = event.dataTransfer.getData("application/x-equipment-kind") as EquipmentKind;
       if (!kind) return;
-      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      const raw = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      // Um nó recém-solto do toolbar nunca passava pelo `snapToGrid` do
+      // ReactFlow (que só se aplica ao ARRASTAR um nó já existente) — cada
+      // componente nascia na posição exata do cursor, então dois componentes
+      // soltos em momentos diferentes praticamente nunca caíam na mesma linha
+      // do grid, mesmo tendo a mesma altura de caixa (ex.: DJ/CH/Linha, todas
+      // 24px) — os handles pareciam "desalinhados" entre si por causa disso.
+      const position = { x: Math.round(raw.x / GRID) * GRID, y: Math.round(raw.y / GRID) * GRID };
       onDropEquipment?.(kind, position);
     },
     [screenToFlowPosition, onDropEquipment]
+  );
+
+  // Modo GRAVANDO: clique num DJ/CH/Religador alterna estado + gera passo (ver
+  // SubstationEditorPage.tsx). Fora desse modo, o clique simples não faz nada
+  // (duplo clique abre o modal de propriedades, ver onNodeDoubleClick abaixo).
+  const handleNodeClick = useCallback(
+    (_event: ReactMouseEvent, node: { id: string }) => {
+      if (!recording) return;
+      onEquipmentToggle?.(node.id);
+    },
+    [recording, onEquipmentToggle]
   );
 
   const handleDragOver = useCallback((event: DragEvent) => {
@@ -144,6 +172,22 @@ export function Canvas({ readOnly = false, onNodeDoubleClick, onConnectError, on
   // Mapa de energização real: só propaga tensão através de DJ/CH/Religador
   // fechados, então o wire depois de um equipamento aberto fica cinza.
   const energizedVoltages = useMemo(() => computeVoltageMap(nodes, edges), [nodes, edges]);
+
+  // Barra de transferência não semeia tensão própria (ver computeVoltageMap) —
+  // só recebe cor quando um caminho fechado a alcança. Injeta o resultado em
+  // `data.energizedTensao` numa cópia dos nós (não no estado canônico da
+  // store, mesmo motivo de styledEdges abaixo) pra BarraNode colorir.
+  const styledNodes = useMemo(
+    () =>
+      nodes.map((node) => {
+        if (node.type !== "barra" || node.data.tipo !== "transferencia") return node;
+        const tensao = node.data.handles
+          .map((h) => energizedVoltages.get(portKey(node.id, h.id)))
+          .find((v) => v !== undefined);
+        return { ...node, data: { ...node.data, energizedTensao: tensao } };
+      }),
+    [nodes, energizedVoltages]
+  );
 
   const styledEdges = useMemo(
     () =>
@@ -179,22 +223,23 @@ export function Canvas({ readOnly = false, onNodeDoubleClick, onConnectError, on
   return (
     <div className="relative h-full w-full" onClickCapture={handleClickCapture}>
       <ReactFlow
-        nodes={nodes}
+        nodes={styledNodes}
         edges={styledEdges}
         nodeTypes={nodeTypes}
-        onNodesChange={readOnly ? undefined : onNodesChange}
-        onEdgesChange={readOnly ? undefined : onEdgesChange}
-        onConnect={readOnly || wireMode ? undefined : handleConnect}
-        onNodeDoubleClick={readOnly || wireMode ? undefined : (_, node) => onNodeDoubleClick?.(node.id)}
-        onDrop={readOnly ? undefined : handleDrop}
-        onDragOver={readOnly ? undefined : handleDragOver}
-        onEdgeDoubleClick={readOnly ? undefined : handleEdgeDoubleClick}
+        onNodesChange={readOnly || recording ? undefined : onNodesChange}
+        onEdgesChange={readOnly || recording ? undefined : onEdgesChange}
+        onConnect={readOnly || wireMode || recording ? undefined : handleConnect}
+        onNodeClick={readOnly ? undefined : handleNodeClick}
+        onNodeDoubleClick={readOnly || wireMode || recording ? undefined : (_, node) => onNodeDoubleClick?.(node.id)}
+        onDrop={readOnly || recording ? undefined : handleDrop}
+        onDragOver={readOnly || recording ? undefined : handleDragOver}
+        onEdgeDoubleClick={readOnly || recording ? undefined : handleEdgeDoubleClick}
         connectionMode={ConnectionMode.Loose}
-        deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
+        deleteKeyCode={readOnly || recording ? null : ["Backspace", "Delete"]}
         snapToGrid
         snapGrid={[GRID, GRID]}
-        nodesDraggable={!readOnly && !wireMode}
-        nodesConnectable={!readOnly && !wireMode}
+        nodesDraggable={!readOnly && !wireMode && !recording}
+        nodesConnectable={!readOnly && !wireMode && !recording}
         elementsSelectable={!readOnly}
         style={wireMode ? { cursor: "crosshair" } : undefined}
         fitView

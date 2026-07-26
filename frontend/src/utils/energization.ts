@@ -66,9 +66,14 @@ export function computeVoltageMap(
       case "disjuntor":
       case "chave":
       case "religador":
+      case "chave_provisoria":
         if (!respectSwitchState || node.data.estado === "fechado") {
           link(portKey(node.id, "terminal-a"), portKey(node.id, "terminal-b"));
         }
+        break;
+      case "jumper":
+        // Jumper é uma conexão elétrica direta (sem estado aberto/fechado) — sempre conduz.
+        link(portKey(node.id, "terminal-a"), portKey(node.id, "terminal-b"));
         break;
       default:
         break;

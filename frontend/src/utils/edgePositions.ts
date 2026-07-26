@@ -21,6 +21,8 @@ const TERMINAL_BASE_POSITIONS: Partial<Record<EquipmentKind, TerminalBaseMap>> =
   tf3: { "terminal-a": Position.Left, "terminal-b": Position.Right, "terminal-ter": Position.Bottom },
   tc: { "terminal-a": Position.Left, "terminal-b": Position.Right },
   tp: { "terminal-a": Position.Top },
+  jumper: { "terminal-a": Position.Left, "terminal-b": Position.Right },
+  chave_provisoria: { "terminal-a": Position.Left, "terminal-b": Position.Right },
 };
 
 /** Posição de um terminal fixo (terminal-a/b/ter), considerando a rotação atual do componente. */

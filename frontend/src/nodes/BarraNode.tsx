@@ -24,9 +24,15 @@ const STROKE_WIDTH: Record<BarraTipo, number> = {
 export function BarraNode({ id, data, selected }: NodeProps<BarraNodeType>) {
   const rotation = data.rotation ?? 0;
   const { wrapperStyle } = useNodeRotation(id, rotation);
-  // Barra de transferência só assume a cor da tensão quando há propagação
-  // (Correção 3 — caminho fechado até ela); fora disso fica cinza.
-  const color = data.tipo === "transferencia" ? WIRE_UNCONNECTED_STROKE : VOLTAGE_COLORS[data.tensao];
+  // Barra de transferência não tem tensão própria fixa: só assume a cor
+  // (azul/etc conforme o nível) quando um caminho fechado a energiza de fato
+  // (`energizedTensao`, calculado em Canvas.tsx); fora disso fica cinza.
+  const color =
+    data.tipo === "transferencia"
+      ? data.energizedTensao !== undefined
+        ? VOLTAGE_COLORS[data.energizedTensao]
+        : WIRE_UNCONNECTED_STROKE
+      : VOLTAGE_COLORS[data.tensao];
   const width = STROKE_WIDTH[data.tipo];
   const isHorizontal = rotation === 90 || rotation === 270;
   const handles = data.handles ?? [];

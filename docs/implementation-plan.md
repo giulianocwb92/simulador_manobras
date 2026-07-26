@@ -65,19 +65,22 @@ Marque cada item com [x] ao concluir.
 
 ## FASE 5 — Elementos provisórios
 
-- [ ] Implementar `nodes/JumperNode.tsx`
-- [ ] Implementar `nodes/ChaveProvisorialNode.tsx`
-- [ ] Modal ao adicionar: definir se é permanente ou temporário
+- [x] Implementar `nodes/JumperNode.tsx`
+- [x] Implementar `nodes/ChaveProvisoriaNode.tsx` (nome corrigido de `ChaveProvisorialNode.tsx`)
+- [x] Modal ao adicionar: definir se é permanente ou temporário
 - [ ] Lógica: ao finalizar manobra, elementos permanentes são incorporados à topologia base
+      — depende do botão "Finalizar Manobra" da FASE 7, que ainda não existe; os nós já
+      carregam o flag `permanente` em `data`, pronto para essa lógica consumir
 
 ---
 
 ## FASE 6 — Simulação de manobra
 
-- [ ] Implementar troca de modo: botão "Iniciar Gravação" no editor
-- [ ] No modo GRAVANDO: clique em DJ/CH/Religador → toggle estado + gera passo
-- [ ] Geração automática do texto do passo (ver tabela em domain-model.md)
-- [ ] Painel lateral direito: lista de passos em tempo real
+- [x] Implementar troca de modo: botão "Iniciar Gravação" no editor (e "Finalizar Gravação",
+      complementar — sem isso não dava pra sair do modo GRAVANDO nem testar a fase)
+- [x] No modo GRAVANDO: clique em DJ/CH/Religador → toggle estado + gera passo
+- [x] Geração automática do texto do passo (ver tabela em domain-model.md)
+- [x] Painel lateral direito: lista de passos em tempo real
 - [ ] Suporte a múltiplas SEs: carregar 2ª SE no mesmo canvas (separadas visualmente)
 - [ ] Passos de SEs diferentes identificados por prefixo da SE no texto
 

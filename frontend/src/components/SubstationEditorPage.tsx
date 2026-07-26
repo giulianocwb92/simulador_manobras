@@ -5,6 +5,7 @@ import { ReactFlowProvider, type Edge } from "@xyflow/react";
 import { ApiError } from "../services/api";
 import { substationsService } from "../services/substations";
 import { useEditorStore } from "../stores/editorStore";
+import { useManeuverStore } from "../stores/maneuverStore";
 import { useUserStore } from "../stores/userStore";
 import { useAutoSave } from "../hooks/useAutoSave";
 import { useEditorShortcuts } from "../hooks/useEditorShortcuts";
@@ -12,7 +13,10 @@ import { Canvas } from "./editor/Canvas";
 import { Toolbar } from "./editor/Toolbar";
 import { LockBanner } from "./editor/LockBanner";
 import { PropertiesModal, type PropertiesModalSubmitPayload } from "./editor/PropertiesModal";
-import type { EquipmentKind, TopologyNode } from "../types/topology";
+import { StepsPanel } from "./maneuver/StepsPanel";
+import { generateStepDescription, TOGGLEABLE_KINDS } from "../utils/maneuverStepText";
+import type { EquipmentKind, EquipmentState, TopologyNode } from "../types/topology";
+import type { ManeuverAction } from "../types/maneuver";
 import type { Substation, Topology } from "../types/substation";
 
 function topologyToStore(topology: Topology): { nodes: TopologyNode[]; edges: Edge[] } {
@@ -55,10 +59,14 @@ export function SubstationEditorPage() {
 
   const nodes = useEditorStore((s) => s.nodes);
   const edges = useEditorStore((s) => s.edges);
+  const mode = useEditorStore((s) => s.mode);
+  const setMode = useEditorStore((s) => s.setMode);
   const setTopology = useEditorStore((s) => s.setTopology);
   const addNode = useEditorStore((s) => s.addNode);
   const updateNodeData = useEditorStore((s) => s.updateNodeData);
   const reset = useEditorStore((s) => s.reset);
+  const addManeuverStep = useManeuverStore((s) => s.addStep);
+  const resetManeuver = useManeuverStore((s) => s.reset);
 
   const [ownsLock, setOwnsLock] = useState(false);
   const [lockedByName, setLockedByName] = useState<string | null>(null);
@@ -113,7 +121,7 @@ export function SubstationEditorPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [id, currentUser, ownsLock]);
 
-  useEditorShortcuts(ownsLock);
+  useEditorShortcuts(ownsLock && mode === "CONFIGURACAO");
 
   async function save() {
     if (!id || !currentUser) return;
@@ -156,6 +164,38 @@ export function SubstationEditorPage() {
     setModalState(null);
   }
 
+  // Modo GRAVANDO (ver docs/editor-topology.md): clique num DJ/CH/Religador
+  // alterna o estado e gera automaticamente um passo na manobra.
+  function handleEquipmentToggle(nodeId: string) {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node || !TOGGLEABLE_KINDS.has(node.type as EquipmentKind)) return;
+    const data = node.data as { estado?: EquipmentState; label?: string };
+    if (!data.estado || !data.label) return;
+    const novoEstado: EquipmentState = data.estado === "aberto" ? "fechado" : "aberto";
+    const acao: ManeuverAction = novoEstado === "aberto" ? "ABRIR" : "FECHAR";
+    updateNodeData(nodeId, { estado: novoEstado });
+    const description = generateStepDescription(node.type as EquipmentKind, data.label, acao);
+    if (!description) return;
+    const currentSteps = useManeuverStore.getState().steps;
+    addManeuverStep({
+      id: crypto.randomUUID(),
+      order: currentSteps.length + 1,
+      description,
+      equipment_id: nodeId,
+      action: acao,
+      origin: "SIMULADOR",
+    });
+  }
+
+  function handleStartRecording() {
+    resetManeuver();
+    setMode("GRAVANDO");
+  }
+
+  function handleFinishRecording() {
+    setMode("FINALIZADA");
+  }
+
   const substationOptions = (allSubstations ?? []).filter((s) => s.id !== id).map((s) => ({ id: s.id, name: s.name }));
 
   if (!substation) {
@@ -175,16 +215,42 @@ export function SubstationEditorPage() {
         </div>
         {ownsLock && (
           <div className="flex items-center gap-3">
-            {saveStatus === "saving" && <span className="text-xs text-slate-400">Salvando...</span>}
-            {saveStatus === "saved" && <span className="text-xs text-emerald-600">Salvo</span>}
-            {saveStatus === "error" && <span className="text-xs text-red-600">Erro ao salvar</span>}
-            <button
-              type="button"
-              onClick={save}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-            >
-              Salvar subestação
-            </button>
+            {mode === "CONFIGURACAO" && (
+              <>
+                {saveStatus === "saving" && <span className="text-xs text-slate-400">Salvando...</span>}
+                {saveStatus === "saved" && <span className="text-xs text-emerald-600">Salvo</span>}
+                {saveStatus === "error" && <span className="text-xs text-red-600">Erro ao salvar</span>}
+                <button
+                  type="button"
+                  onClick={save}
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                >
+                  Salvar subestação
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartRecording}
+                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                >
+                  Iniciar Gravação
+                </button>
+              </>
+            )}
+            {mode === "GRAVANDO" && (
+              <>
+                <span className="flex items-center gap-1.5 text-xs font-medium text-red-600">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" /> Gravando manobra
+                </span>
+                <button
+                  type="button"
+                  onClick={handleFinishRecording}
+                  className="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-900"
+                >
+                  Finalizar Gravação
+                </button>
+              </>
+            )}
+            {mode === "FINALIZADA" && <span className="text-xs font-medium text-slate-500">Manobra finalizada</span>}
           </div>
         )}
       </header>
@@ -201,17 +267,20 @@ export function SubstationEditorPage() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        {ownsLock && <Toolbar />}
+        {ownsLock && mode === "CONFIGURACAO" && <Toolbar />}
         <div className="flex-1">
           <ReactFlowProvider>
             <Canvas
-              readOnly={!ownsLock}
+              readOnly={!ownsLock || mode === "FINALIZADA"}
+              recording={ownsLock && mode === "GRAVANDO"}
               onNodeDoubleClick={handleNodeDoubleClick}
+              onEquipmentToggle={handleEquipmentToggle}
               onConnectError={setConnectError}
               onDropEquipment={handleDropEquipment}
             />
           </ReactFlowProvider>
         </div>
+        {(mode === "GRAVANDO" || mode === "FINALIZADA") && <StepsPanel />}
       </div>
 
       {modalState && (

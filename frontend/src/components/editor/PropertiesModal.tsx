@@ -24,6 +24,8 @@ const KIND_TITLES: Record<EquipmentKind, string> = {
   tp: "TP",
   tc: "TC",
   linha: "Linha",
+  jumper: "Jumper",
+  chave_provisoria: "Chave Provisória",
 };
 
 const BARRA_TIPO_LABELS: Record<BarraTipo, string> = {
@@ -55,6 +57,7 @@ export function PropertiesModal({
   const [destinoSeId, setDestinoSeId] = useState((initialData?.destino_se_id as string) ?? "");
   const [barraTipo, setBarraTipo] = useState<BarraTipo>((initialData?.tipo as BarraTipo) ?? "principal");
   const [fonte, setFonte] = useState((initialData?.fonte as boolean) ?? false);
+  const [permanente, setPermanente] = useState((initialData?.permanente as boolean) ?? false);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -119,6 +122,16 @@ export function PropertiesModal({
         label: nome,
         data: { label: nome, nome, destino_se_id: destinoSeId || null, destino_se_nome: destino?.name ?? null },
       });
+      return;
+    }
+    if (kind === "jumper") {
+      const label = nome ? `Jumper ${nome}` : "Jumper";
+      onSubmit({ label, data: { label, nome, permanente } });
+      return;
+    }
+    if (kind === "chave_provisoria") {
+      const label = nome ? `CH Prov. ${nome}` : "CH Provisória";
+      onSubmit({ label, data: { label, nome, estado, permanente } });
     }
   }
 
@@ -127,11 +140,11 @@ export function PropertiesModal({
       <form onSubmit={handleSubmit} className="w-80 rounded-lg bg-white p-5 shadow-lg">
         <h2 className="mb-4 text-sm font-semibold text-slate-900">{KIND_TITLES[kind]}</h2>
 
-        {(kind === "barra" || kind === "religador" || kind === "linha") && (
+        {(kind === "barra" || kind === "religador" || kind === "linha" || kind === "jumper" || kind === "chave_provisoria") && (
           <label className="mb-3 block text-sm">
             {kind === "linha" ? "Nome da linha" : "Nome"}
             <input
-              required
+              required={kind !== "jumper" && kind !== "chave_provisoria"}
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -185,7 +198,7 @@ export function PropertiesModal({
           </>
         )}
 
-        {(kind === "disjuntor" || kind === "chave" || kind === "religador") && (
+        {(kind === "disjuntor" || kind === "chave" || kind === "religador" || kind === "chave_provisoria") && (
           <label className="mb-3 block text-sm">
             Estado inicial
             <select
@@ -196,6 +209,13 @@ export function PropertiesModal({
               <option value="aberto">Aberto</option>
               <option value="fechado">Fechado</option>
             </select>
+          </label>
+        )}
+
+        {(kind === "jumper" || kind === "chave_provisoria") && (
+          <label className="mb-3 flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={permanente} onChange={(e) => setPermanente(e.target.checked)} />
+            Permanente (incorporado à topologia base ao finalizar a manobra)
           </label>
         )}
 
