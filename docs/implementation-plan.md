@@ -56,7 +56,7 @@ Marque cada item com [x] ao concluir.
 - [x] Implementar toolbar de componentes (drag-and-drop para o canvas)
 - [x] Implementar modal de propriedades ao soltar componente no canvas
 - [x] Implementar validação `onConnect`: tensões incompatíveis, linha em MT
-- [x] Implementar grid snap (20px)
+- [x] Implementar grid snap (10px)
 - [x] Implementar auto-save a cada 30s (PUT na API — `docs/api-contracts.md` não define um PATCH de topologia, só `PUT /substations/{id}`; usado esse endpoint em vez do PATCH citado aqui)
 - [x] Implementar lock visual: banner "SE travada por [nome]" quando `locked_by != null`
 - [x] Implementar liberação de lock ao sair da página (`beforeunload` + cleanup do React Router ao navegar)

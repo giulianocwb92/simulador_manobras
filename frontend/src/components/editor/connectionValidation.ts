@@ -1,4 +1,4 @@
-import type { Connection } from "@xyflow/react";
+import type { Connection, Edge } from "@xyflow/react";
 import { tensaoDoTerminal, type TopologyNode } from "../../types/topology";
 
 export interface ConnectionValidationResult {
@@ -7,7 +7,11 @@ export interface ConnectionValidationResult {
 }
 
 /** Regras de validação de conexão — ver docs/editor-topology.md. */
-export function validateConnection(connection: Connection, nodes: TopologyNode[]): ConnectionValidationResult {
+export function validateConnection(
+  connection: Connection,
+  nodes: TopologyNode[],
+  _edges: Edge[]
+): ConnectionValidationResult {
   const sourceNode = nodes.find((n) => n.id === connection.source);
   const targetNode = nodes.find((n) => n.id === connection.target);
 
@@ -22,13 +26,8 @@ export function validateConnection(connection: Connection, nodes: TopologyNode[]
     return { ok: false, message: "Não é possível conectar barras de tensões diferentes sem transformador" };
   }
 
-  const linhaNode = sourceNode.type === "linha" ? sourceNode : targetNode.type === "linha" ? targetNode : null;
-  if (linhaNode) {
-    const outroNode = linhaNode === sourceNode ? targetNode : sourceNode;
-    if (outroNode.type !== "barra" || outroNode.data.tensao < 69) {
-      return { ok: false, message: "Bloco Linha só pode ser conectado em barras de 69 kV ou superior" };
-    }
-  }
-
+  // Bloco Linha: conexão livre — sem restrição de tipo de equipamento ou nível de
+  // tensão do outro lado (ex.: CH 29-03 ligada direto na linha, sem barra >=69 kV
+  // topologicamente resolvida). Ver pedido do usuário em 2026-07-25.
   return { ok: true };
 }

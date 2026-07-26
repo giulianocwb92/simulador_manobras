@@ -60,7 +60,8 @@ export function PropertiesModal({
     event.preventDefault();
 
     if (kind === "barra") {
-      onSubmit({ label: nome, data: { nome, tensao, tipo: barraTipo, fonte } });
+      const handles = (initialData?.handles as { id: string; position: number }[]) ?? [];
+      onSubmit({ label: nome, data: { nome, tensao, tipo: barraTipo, fonte, handles } });
       return;
     }
     if (kind === "disjuntor") {

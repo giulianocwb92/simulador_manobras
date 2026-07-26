@@ -14,11 +14,18 @@ interface BaseEquipmentData extends Record<string, unknown> {
 
 export type BarraTipo = "principal" | "transferencia" | "dupla";
 
+export interface BarraHandle {
+  id: string;
+  /** Posição relativa ao longo da barra: 0.0 = início, 1.0 = fim. */
+  position: number;
+}
+
 export interface BarraData extends BaseEquipmentData {
   tipo: BarraTipo;
   fonte: boolean;
   tensao: VoltageLevel;
   nome: string;
+  handles: BarraHandle[];
 }
 
 export interface DJData extends BaseEquipmentData {

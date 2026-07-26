@@ -1,6 +1,14 @@
-import { applyEdgeChanges, applyNodeChanges, type Connection, type Edge, type EdgeChange, type NodeChange } from "@xyflow/react";
+import {
+  applyEdgeChanges,
+  applyNodeChanges,
+  type Connection,
+  type Edge,
+  type EdgeChange,
+  type NodeChange,
+  type XYPosition,
+} from "@xyflow/react";
 import { create } from "zustand";
-import type { EquipmentKind, Rotation, TopologyNode } from "../types/topology";
+import type { BarraData, EquipmentKind, Rotation, TopologyNode } from "../types/topology";
 
 export type EditorMode = "CONFIGURACAO" | "GRAVANDO" | "FINALIZADA";
 
@@ -15,11 +23,19 @@ const ROTATABLE_KINDS: ReadonlySet<EquipmentKind> = new Set([
   "tc",
 ]);
 
+export interface WirePending {
+  sourceNodeId: string;
+  sourceHandleId: string;
+  sourcePosition: XYPosition;
+}
+
 interface EditorState {
   mode: EditorMode;
   activeSubstationId: string | null;
   nodes: TopologyNode[];
   edges: Edge[];
+  wireMode: boolean;
+  wirePending: WirePending | null;
   setMode: (mode: EditorMode) => void;
   setActiveSubstationId: (id: string | null) => void;
   setTopology: (nodes: TopologyNode[], edges: Edge[]) => void;
@@ -28,7 +44,12 @@ interface EditorState {
   addNode: (node: TopologyNode) => void;
   updateNodeData: (id: string, data: Record<string, unknown>) => void;
   addEdge: (connection: Connection) => void;
+  removeEdge: (edgeId: string) => void;
   rotateSelectedNodes: () => void;
+  setWireMode: (active: boolean) => void;
+  startWire: (pending: WirePending) => void;
+  cancelWire: () => void;
+  addBarHandle: (nodeId: string, position: number) => string;
   reset: () => void;
 }
 
@@ -37,6 +58,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   activeSubstationId: null,
   nodes: [],
   edges: [],
+  wireMode: false,
+  wirePending: null,
   setMode: (mode) => set({ mode }),
   setActiveSubstationId: (id) => set({ activeSubstationId: id }),
   setTopology: (nodes, edges) => set({ nodes, edges }),
@@ -64,6 +87,7 @@ export const useEditorStore = create<EditorState>((set) => ({
         },
       ],
     })),
+  removeEdge: (edgeId) => set((state) => ({ edges: state.edges.filter((edge) => edge.id !== edgeId) })),
   rotateSelectedNodes: () =>
     set((state) => ({
       nodes: state.nodes.map((node) => {
@@ -73,5 +97,21 @@ export const useEditorStore = create<EditorState>((set) => ({
         return { ...node, data: { ...node.data, rotation: next } } as TopologyNode;
       }),
     })),
-  reset: () => set({ mode: "CONFIGURACAO", activeSubstationId: null, nodes: [], edges: [] }),
+  setWireMode: (active) =>
+    set((state) => ({ wireMode: active, wirePending: active ? state.wirePending : null })),
+  startWire: (pending) => set({ wirePending: pending }),
+  cancelWire: () => set({ wirePending: null }),
+  addBarHandle: (nodeId, position) => {
+    const handleId = `h-${crypto.randomUUID()}`;
+    set((state) => ({
+      nodes: state.nodes.map((node) => {
+        if (node.id !== nodeId || node.type !== "barra") return node;
+        const barraData = node.data as BarraData;
+        const handles = [...(barraData.handles ?? []), { id: handleId, position }];
+        return { ...node, data: { ...node.data, handles } } as TopologyNode;
+      }),
+    }));
+    return handleId;
+  },
+  reset: () => set({ mode: "CONFIGURACAO", activeSubstationId: null, nodes: [], edges: [], wireMode: false, wirePending: null }),
 }));

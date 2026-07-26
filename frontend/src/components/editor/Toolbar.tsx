@@ -39,6 +39,8 @@ const SECTIONS: { title: string; items: ComponentItem[] }[] = [
 export function Toolbar() {
   const nodes = useEditorStore((s) => s.nodes);
   const rotateSelectedNodes = useEditorStore((s) => s.rotateSelectedNodes);
+  const wireMode = useEditorStore((s) => s.wireMode);
+  const setWireMode = useEditorStore((s) => s.setWireMode);
   const hasSelection = nodes.some((n) => n.selected);
 
   function handleDragStart(event: DragEvent, kind: EquipmentKind) {
@@ -51,6 +53,17 @@ export function Toolbar() {
       <h2 className="border-b border-slate-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
         Componentes
       </h2>
+      <button
+        type="button"
+        onClick={() => setWireMode(!wireMode)}
+        aria-pressed={wireMode}
+        className={`flex w-full items-center gap-2 border-b border-slate-200 px-3 py-2 text-sm hover:bg-slate-50 ${
+          wireMode ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-700"
+        }`}
+      >
+        <span className="w-5 text-center">W</span>
+        Wire
+      </button>
       <button
         type="button"
         onClick={() => rotateSelectedNodes()}

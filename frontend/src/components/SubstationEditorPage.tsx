@@ -7,6 +7,7 @@ import { substationsService } from "../services/substations";
 import { useEditorStore } from "../stores/editorStore";
 import { useUserStore } from "../stores/userStore";
 import { useAutoSave } from "../hooks/useAutoSave";
+import { useEditorShortcuts } from "../hooks/useEditorShortcuts";
 import { Canvas } from "./editor/Canvas";
 import { Toolbar } from "./editor/Toolbar";
 import { LockBanner } from "./editor/LockBanner";
@@ -57,7 +58,6 @@ export function SubstationEditorPage() {
   const setTopology = useEditorStore((s) => s.setTopology);
   const addNode = useEditorStore((s) => s.addNode);
   const updateNodeData = useEditorStore((s) => s.updateNodeData);
-  const rotateSelectedNodes = useEditorStore((s) => s.rotateSelectedNodes);
   const reset = useEditorStore((s) => s.reset);
 
   const [ownsLock, setOwnsLock] = useState(false);
@@ -113,17 +113,7 @@ export function SubstationEditorPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [id, currentUser, ownsLock]);
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (!ownsLock) return;
-      if (event.ctrlKey && event.key.toLowerCase() === "r") {
-        event.preventDefault();
-        rotateSelectedNodes();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [ownsLock, rotateSelectedNodes]);
+  useEditorShortcuts(ownsLock);
 
   async function save() {
     if (!id || !currentUser) return;
@@ -143,7 +133,7 @@ export function SubstationEditorPage() {
     setModalState({ mode: "create", kind, position });
   }
 
-  function handleNodeClick(nodeId: string) {
+  function handleNodeDoubleClick(nodeId: string) {
     if (!ownsLock) return;
     const node = nodes.find((n) => n.id === nodeId);
     if (!node || !node.type) return;
@@ -216,7 +206,7 @@ export function SubstationEditorPage() {
           <ReactFlowProvider>
             <Canvas
               readOnly={!ownsLock}
-              onNodeClick={handleNodeClick}
+              onNodeDoubleClick={handleNodeDoubleClick}
               onConnectError={setConnectError}
               onDropEquipment={handleDropEquipment}
             />

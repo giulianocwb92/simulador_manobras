@@ -75,6 +75,14 @@ npm run build
 npm run typecheck
 ```
 
+## Atalhos do editor
+
+- **Duplo-clique** num equipamento: abre o modal de propriedades para edição (clique simples só seleciona/move, sem abrir o modal)
+- **W**: ativa a ferramenta Wire (clique para iniciar o fio, clique novamente para concluir); **Esc** ou **Delete** cancela
+- **Ctrl+R**: rotaciona os componentes selecionados (0°/90°/180°/270°)
+- **Duplo-clique** num fio: remove a conexão
+- Grid snap de 10px em todo o canvas
+
 ## Estrutura de pastas
 
 ```
