@@ -1,11 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { maneuversService } from "../services/maneuvers";
-
-const ACTION_BADGE: Record<string, string> = {
-  ABRIR: "bg-emerald-50 text-emerald-700",
-  FECHAR: "bg-red-50 text-red-700",
-};
+import { StepBadges } from "./maneuver/StepBadges";
 
 const FIELD_LABELS: { key: "numero" | "data" | "responsavel" | "area"; label: string }[] = [
   { key: "numero", label: "Número" },
@@ -99,16 +95,7 @@ export function ManeuverDetailPage() {
               <div className="flex-1">
                 <p>{step.description}</p>
                 <div className="mt-1 flex items-center gap-1.5">
-                  {step.action && (
-                    <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${ACTION_BADGE[step.action]}`}>
-                      {step.action}
-                    </span>
-                  )}
-                  {step.origin === "MANUAL" && (
-                    <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                      manual
-                    </span>
-                  )}
+                  <StepBadges step={step} />
                 </div>
               </div>
             </li>

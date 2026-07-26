@@ -1,5 +1,7 @@
 import uuid
+from contextlib import contextmanager
 from datetime import date
+from typing import Iterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
@@ -23,6 +25,17 @@ from app.services import maneuver_service
 from app.services.maneuver_service import ManeuverFinalizedError
 
 router = APIRouter(prefix="/maneuvers", tags=["maneuvers"])
+
+
+@contextmanager
+def _reject_if_finalized() -> Iterator[None]:
+    """Traduz ManeuverFinalizedError (levantado pelos services ao tentar editar
+    uma manobra já FINALIZADA) pro 409 HTTP — repetido em todo endpoint de
+    mutação, centralizado aqui."""
+    try:
+        yield
+    except ManeuverFinalizedError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
 
 async def _get_maneuver_or_404(db: AsyncSession, maneuver_id: uuid.UUID) -> Maneuver:
@@ -107,7 +120,7 @@ async def update_maneuver(
     maneuver_id: uuid.UUID, payload: ManeuverUpdate, db: AsyncSession = Depends(get_db)
 ) -> Maneuver:
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
-    try:
+    with _reject_if_finalized():
         if payload.header is not None:
             await maneuver_service.update_header(db, maneuver, payload.header)
         if payload.title is not None:
@@ -116,8 +129,6 @@ async def update_maneuver(
             await db.commit()
         if payload.status == ManeuverStatus.FINALIZADA:
             await maneuver_service.finalize(db, maneuver)
-    except ManeuverFinalizedError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return await _get_maneuver_or_404(db, maneuver_id)
 
 
@@ -135,10 +146,8 @@ async def add_step(
     maneuver_id: uuid.UUID, payload: ManeuverStepCreate, db: AsyncSession = Depends(get_db)
 ) -> ManeuverStep:
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
-    try:
+    with _reject_if_finalized():
         return await maneuver_service.add_step(db, maneuver, payload)
-    except ManeuverFinalizedError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
 
 @router.put("/{maneuver_id}/steps/{step_id}", response_model=ManeuverStepRead)
@@ -147,20 +156,16 @@ async def update_step(
 ) -> ManeuverStep:
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
     step = _get_step_or_404(maneuver, step_id)
-    try:
+    with _reject_if_finalized():
         return await maneuver_service.update_step(db, maneuver, step, payload.description)
-    except ManeuverFinalizedError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
 
 @router.delete("/{maneuver_id}/steps/{step_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_step(maneuver_id: uuid.UUID, step_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> None:
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
     step = _get_step_or_404(maneuver, step_id)
-    try:
+    with _reject_if_finalized():
         await maneuver_service.delete_step(db, maneuver, step)
-    except ManeuverFinalizedError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
 
 @router.post("/{maneuver_id}/steps/reorder", response_model=list[ManeuverStepRead])
@@ -168,19 +173,15 @@ async def reorder_steps(
     maneuver_id: uuid.UUID, payload: ManeuverStepReorder, db: AsyncSession = Depends(get_db)
 ) -> list[ManeuverStep]:
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
-    try:
+    with _reject_if_finalized():
         return await maneuver_service.reorder_steps(db, maneuver, payload.order)
-    except ManeuverFinalizedError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
 
 @router.post("/{maneuver_id}/finalize", response_model=ManeuverRead)
 async def finalize_maneuver(maneuver_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> Maneuver:
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
-    try:
+    with _reject_if_finalized():
         await maneuver_service.finalize(db, maneuver)
-    except ManeuverFinalizedError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return await _get_maneuver_or_404(db, maneuver_id)
 
 

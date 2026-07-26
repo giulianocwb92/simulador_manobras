@@ -1,11 +1,7 @@
 import { useState, type DragEvent, type FormEvent } from "react";
 import { useManeuverStore } from "../../stores/maneuverStore";
 import { maneuversService } from "../../services/maneuvers";
-
-const ACTION_BADGE: Record<string, string> = {
-  ABRIR: "bg-emerald-50 text-emerald-700",
-  FECHAR: "bg-red-50 text-red-700",
-};
+import { StepBadges } from "./StepBadges";
 
 interface StepsPanelProps {
   /** true durante GRAVANDO (só leitura) ou depois que a manobra foi finalizada no
@@ -128,16 +124,7 @@ export function StepsPanel({ readOnly = false }: StepsPanelProps) {
                   />
                 )}
                 <div className="mt-1 flex items-center gap-1.5">
-                  {step.action && (
-                    <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${ACTION_BADGE[step.action]}`}>
-                      {step.action}
-                    </span>
-                  )}
-                  {step.origin === "MANUAL" && (
-                    <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                      manual
-                    </span>
-                  )}
+                  <StepBadges step={step} />
                   {!readOnly && (
                     <button
                       type="button"
