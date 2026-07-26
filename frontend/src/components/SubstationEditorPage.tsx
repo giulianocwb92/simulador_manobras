@@ -65,6 +65,10 @@ export function SubstationEditorPage() {
   const addNode = useEditorStore((s) => s.addNode);
   const updateNodeData = useEditorStore((s) => s.updateNodeData);
   const reset = useEditorStore((s) => s.reset);
+  const secondarySubstation = useEditorStore((s) => s.secondarySubstation);
+  const secondaryIds = useEditorStore((s) => s.secondaryIds);
+  const loadSecondarySubstation = useEditorStore((s) => s.loadSecondarySubstation);
+  const unloadSecondarySubstation = useEditorStore((s) => s.unloadSecondarySubstation);
   const addManeuverStep = useManeuverStore((s) => s.addStep);
   const resetManeuver = useManeuverStore((s) => s.reset);
 
@@ -73,6 +77,7 @@ export function SubstationEditorPage() {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ModalState>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [secondarySubstationId, setSecondarySubstationId] = useState<string | null>(null);
 
   const { data: substation } = useQuery({
     queryKey: ["substations", id],
@@ -85,11 +90,39 @@ export function SubstationEditorPage() {
     queryFn: substationsService.list,
   });
 
+  // SE adicional carregada no mesmo canvas (view + toggle de estado durante a
+  // gravação) — ver docs/implementation-plan.md FASE 6, "suporte a múltiplas SEs".
+  // Só uma leitura (GET), sem lock: essa SE não é editada nem salva por aqui.
+  const { data: secondaryData } = useQuery({
+    queryKey: ["substations", secondarySubstationId],
+    queryFn: () => substationsService.get(secondarySubstationId!),
+    enabled: !!secondarySubstationId,
+  });
+
   useEffect(() => {
     if (!substation) return;
     const { nodes: loadedNodes, edges: loadedEdges } = topologyToStore(substation.topology);
     setTopology(loadedNodes, loadedEdges);
   }, [substation, setTopology]);
+
+  useEffect(() => {
+    if (!secondaryData) return;
+    const { nodes: loadedNodes, edges: loadedEdges } = topologyToStore(secondaryData.topology);
+    loadSecondarySubstation(
+      { id: secondaryData.id, name: secondaryData.name, sigla: secondaryData.sigla },
+      loadedNodes,
+      loadedEdges
+    );
+  }, [secondaryData, loadSecondarySubstation]);
+
+  function handleSecondarySubstationChange(newId: string) {
+    if (!newId) {
+      unloadSecondarySubstation();
+      setSecondarySubstationId(null);
+      return;
+    }
+    setSecondarySubstationId(newId);
+  }
 
   useEffect(() => {
     if (!id || !currentUser) return;
@@ -127,7 +160,11 @@ export function SubstationEditorPage() {
     if (!id || !currentUser) return;
     setSaveStatus("saving");
     try {
-      const updated = await substationsService.updateTopology(id, currentUser.id, storeToTopology(nodes, edges));
+      // Nós/arestas da SE secundária (ver secondaryIds) não pertencem a essa SE —
+      // ficam de fora do PUT pra não gravar o diagrama de outra subestação aqui.
+      const ownNodes = nodes.filter((n) => !secondaryIds.has(n.id));
+      const ownEdges = edges.filter((e) => !secondaryIds.has(e.id));
+      const updated = await substationsService.updateTopology(id, currentUser.id, storeToTopology(ownNodes, ownEdges));
       queryClient.setQueryData<Substation>(["substations", id], updated);
       setSaveStatus("saved");
     } catch {
@@ -174,7 +211,14 @@ export function SubstationEditorPage() {
     const novoEstado: EquipmentState = data.estado === "aberto" ? "fechado" : "aberto";
     const acao: ManeuverAction = novoEstado === "aberto" ? "ABRIR" : "FECHAR";
     updateNodeData(nodeId, { estado: novoEstado });
-    const description = generateStepDescription(node.type as EquipmentKind, data.label, acao);
+    // Com 2 SEs carregadas, prefixa cada passo com a sigla de onde o equipamento
+    // está de fato — sem isso "Abrir DJ 52-01" fica ambíguo entre as duas SEs.
+    const siglaSe = secondarySubstation
+      ? secondaryIds.has(nodeId)
+        ? secondarySubstation.sigla
+        : substation?.sigla
+      : undefined;
+    const description = generateStepDescription(node.type as EquipmentKind, data.label, acao, siglaSe);
     if (!description) return;
     const currentSteps = useManeuverStore.getState().steps;
     addManeuverStep({
@@ -215,6 +259,23 @@ export function SubstationEditorPage() {
         </div>
         {ownsLock && (
           <div className="flex items-center gap-3">
+            {mode !== "FINALIZADA" && (
+              <label className="flex items-center gap-1.5 text-xs text-slate-500">
+                2ª SE (opcional)
+                <select
+                  value={secondarySubstationId ?? ""}
+                  onChange={(e) => handleSecondarySubstationChange(e.target.value)}
+                  className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                >
+                  <option value="">— nenhuma —</option>
+                  {substationOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {mode === "CONFIGURACAO" && (
               <>
                 {saveStatus === "saving" && <span className="text-xs text-slate-400">Salvando...</span>}
@@ -256,6 +317,20 @@ export function SubstationEditorPage() {
       </header>
 
       {lockedByName && !ownsLock && <LockBanner lockedByName={lockedByName} />}
+
+      {secondarySubstation && (
+        <div className="flex items-center justify-between border-b border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+          2ª SE carregada no canvas (à direita, separada visualmente): <strong>{secondarySubstation.name}</strong>{" "}
+          ({secondarySubstation.sigla}) — visualização apenas, não é salva por esta tela.
+          <button
+            type="button"
+            onClick={() => handleSecondarySubstationChange("")}
+            className="text-blue-500 hover:text-blue-700"
+          >
+            remover
+          </button>
+        </div>
+      )}
 
       {connectError && (
         <div className="flex items-center justify-between border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">

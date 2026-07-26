@@ -81,8 +81,11 @@ Marque cada item com [x] ao concluir.
 - [x] No modo GRAVANDO: clique em DJ/CH/Religador → toggle estado + gera passo
 - [x] Geração automática do texto do passo (ver tabela em domain-model.md)
 - [x] Painel lateral direito: lista de passos em tempo real
-- [ ] Suporte a múltiplas SEs: carregar 2ª SE no mesmo canvas (separadas visualmente)
-- [ ] Passos de SEs diferentes identificados por prefixo da SE no texto
+- [x] Suporte a múltiplas SEs: carregar 2ª SE no mesmo canvas (separadas visualmente —
+      offset horizontal calculado a partir do maior X já ocupado; SE secundária é só
+      leitura/toggle, não é dona do lock nem é salva pelo PUT desta tela)
+- [x] Passos de SEs diferentes identificados por prefixo da SE no texto (`[SIGLA] ...`,
+      só aparece quando há 2 SEs carregadas — numa manobra de SE única o prefixo é omitido)
 
 ---
 
