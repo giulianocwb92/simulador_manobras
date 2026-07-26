@@ -34,6 +34,14 @@ class Maneuver(Base):
     def header(self) -> dict:
         return self.header_json
 
+    @property
+    def substation_names(self) -> list[str]:
+        """Nomes das SEs vinculadas via `ManeuverSubstation` (a fonte real —
+        `header["substations"]` é só um campo de texto livre, nunca populado
+        automaticamente). Requer `Maneuver.substations` (e o `.substation`
+        aninhado) já carregados via `selectinload`, ver api/maneuvers.py."""
+        return [ms.substation.name for ms in self.substations if ms.substation is not None]
+
 
 class ManeuverStep(Base):
     __tablename__ = "maneuver_steps"

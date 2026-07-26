@@ -33,13 +33,18 @@ export function SubstationsHomePage() {
     <div className="mx-auto max-w-3xl p-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Subestações</h1>
-        <button
-          type="button"
-          onClick={() => setShowForm((prev) => !prev)}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {showForm ? "Cancelar" : "Nova subestação"}
-        </button>
+        <div className="flex items-center gap-3">
+          <Link to="/manobras" className="text-sm text-slate-500 hover:text-slate-700">
+            Histórico de manobras
+          </Link>
+          <button
+            type="button"
+            onClick={() => setShowForm((prev) => !prev)}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {showForm ? "Cancelar" : "Nova subestação"}
+          </button>
+        </div>
       </div>
 
       {showForm && (

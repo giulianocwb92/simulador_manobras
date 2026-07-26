@@ -117,6 +117,42 @@ async def finalize(db: AsyncSession, maneuver: Maneuver) -> Maneuver:
     return maneuver
 
 
+async def clone_maneuver(db: AsyncSession, original: Maneuver) -> Maneuver:
+    """Cria um novo RASCUNHO com o mesmo cabeçalho e sequência de passos —
+    ver docs/domain-model.md "Histórico de manobras". As SEs envolvidas são
+    religadas à versão ATUAL de cada uma (não a versão congelada da manobra
+    original), já que o clone é um novo trabalho que parte do estado de hoje."""
+    clone = Maneuver(
+        title=f"Cópia de {original.title}",
+        header_json=dict(original.header_json),
+        created_by=original.created_by,
+    )
+    db.add(clone)
+    await db.flush()
+
+    for step in sorted(original.steps, key=lambda s: s.order):
+        db.add(
+            ManeuverStep(
+                maneuver_id=clone.id,
+                order=step.order,
+                description=step.description,
+                equipment_id=step.equipment_id,
+                action=step.action,
+                origin=step.origin,
+            )
+        )
+
+    for ms in original.substations:
+        substation = await db.get(Substation, ms.substation_id)
+        if substation is None:
+            continue
+        db.add(ManeuverSubstation(maneuver_id=clone.id, substation_id=substation.id, substation_version=substation.version))
+
+    await db.commit()
+    await db.refresh(clone)
+    return clone
+
+
 def _logo_data_uri() -> str | None:
     """Embute o logo como data URI (em vez de referenciar o arquivo por caminho)
     pra não depender de `base_url`/permissões de arquivo na hora do WeasyPrint

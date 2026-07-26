@@ -27,6 +27,7 @@ a descrição textual de cada passo e exportar o resultado final em PDF.
 - [x] FASE 6 — Simulação de manobra (gravação de passos com geração automática de texto, painel em tempo real, suporte a uma 2ª subestação no mesmo canvas)
 - [x] FASE 7 — Edição da manobra (cabeçalho, editar/reordenar/deletar passos, passo manual, finalizar — tudo persistido via API)
 - [x] FASE 8 — Geração de PDF (template **provisório** — aguardando o modelo oficial; botão "Baixar PDF")
+- [x] FASE 9 — Histórico (`/manobras`: listar manobras finalizadas com filtros, visualizar, baixar PDF, clonar)
 - [ ] demais fases em [`docs/implementation-plan.md`](docs/implementation-plan.md)
 
 ## Como rodar
@@ -107,6 +108,16 @@ npm run typecheck
 - **"Baixar PDF"**: gera e baixa o PDF da manobra a partir do template em
   `backend/app/templates/maneuver.html` — **modelo provisório**, com layout genérico
   (logo + tabela de cabeçalho + passos numerados), aguardando o template oficial
+
+## Histórico de manobras
+
+Em `/manobras` (link na tela inicial): lista as manobras finalizadas, com filtros por
+subestação, responsável e intervalo de datas. Cada card tem três ações — **Visualizar**
+(tela somente leitura com cabeçalho e passos, `/manobras/{id}`), **Baixar PDF** e
+**Clonar** (cria um novo rascunho com o mesmo cabeçalho e sequência de passos, religado
+à versão atual de cada SE envolvida). O rascunho clonado é só visualizável nessa tela —
+continuar editando/gravando de fato (reordenar, passo manual, finalizar) precisa ser
+feito de dentro do editor de uma subestação, não tem canvas anexado à tela de histórico.
 
 ## Estrutura de pastas
 

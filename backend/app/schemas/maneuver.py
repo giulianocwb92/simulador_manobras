@@ -64,6 +64,10 @@ class ManeuverRead(BaseModel):
     title: str
     status: ManeuverStatus
     header: ManeuverHeader
+    # Nomes reais das SEs vinculadas (via ManeuverSubstation) — ver
+    # Maneuver.substation_names. `header.substations` é só texto livre, nunca
+    # populado automaticamente; não usar pra exibição.
+    substation_names: list[str]
     steps: list[ManeuverStepRead]
     created_by: uuid.UUID | None
     created_at: datetime

@@ -52,13 +52,18 @@ async def list_maneuvers(
     se_id: uuid.UUID | None = Query(None, alias="se_id"),
     user_id: uuid.UUID | None = None,
     status_filter: ManeuverStatus | None = Query(None, alias="status"),
-    data: date | None = None,
+    responsavel: str | None = None,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> list[Maneuver]:
+    """Busca por subestação, data (intervalo) e responsável — ver
+    docs/domain-model.md "Histórico de manobras"."""
     substation_id = se_id
-    query = select(Maneuver).options(selectinload(Maneuver.steps), selectinload(Maneuver.substations)).order_by(
-        Maneuver.created_at.desc()
-    )
+    query = select(Maneuver).options(
+        selectinload(Maneuver.steps),
+        selectinload(Maneuver.substations).selectinload(ManeuverSubstation.substation),
+    ).order_by(Maneuver.created_at.desc())
     if user_id is not None:
         query = query.where(Maneuver.created_by == user_id)
     if status_filter is not None:
@@ -67,8 +72,22 @@ async def list_maneuvers(
     maneuvers = list(result.scalars().all())
     if substation_id is not None:
         maneuvers = [m for m in maneuvers if any(s.substation_id == substation_id for s in m.substations)]
-    if data is not None:
-        maneuvers = [m for m in maneuvers if m.header.get("data") == data.isoformat()]
+    if responsavel:
+        needle = responsavel.strip().lower()
+        maneuvers = [m for m in maneuvers if needle in (m.header.get("responsavel") or "").lower()]
+    if data_inicio is not None or data_fim is not None:
+        def _in_range(m: Maneuver) -> bool:
+            raw = m.header.get("data")
+            if not raw:
+                return False
+            valor = date.fromisoformat(raw)
+            if data_inicio is not None and valor < data_inicio:
+                return False
+            if data_fim is not None and valor > data_fim:
+                return False
+            return True
+
+        maneuvers = [m for m in maneuvers if _in_range(m)]
     return maneuvers
 
 
@@ -165,13 +184,19 @@ async def finalize_maneuver(maneuver_id: uuid.UUID, db: AsyncSession = Depends(g
     return await _get_maneuver_or_404(db, maneuver_id)
 
 
+@router.post("/{maneuver_id}/clone", response_model=ManeuverRead, status_code=status.HTTP_201_CREATED)
+async def clone_maneuver(maneuver_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> Maneuver:
+    original = await _get_maneuver_or_404(db, maneuver_id)
+    clone = await maneuver_service.clone_maneuver(db, original)
+    return await _get_maneuver_or_404(db, clone.id)
+
+
 @router.get("/{maneuver_id}/pdf")
 async def get_maneuver_pdf(maneuver_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> FileResponse:
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
     # Regenera a cada chamada (o conteúdo pode mudar até a manobra ser
     # finalizada) — modelo de template PROVISÓRIO, ver maneuver_service.py.
-    substation_names = [ms.substation.name for ms in maneuver.substations if ms.substation is not None]
-    pdf_bytes = maneuver_service.render_pdf(maneuver, substation_names)
+    pdf_bytes = maneuver_service.render_pdf(maneuver, maneuver.substation_names)
     path = maneuver_service.save_pdf(maneuver.id, pdf_bytes)
     filename = f"manobra-{maneuver.header.get('numero') or maneuver.id}.pdf"
     return FileResponse(path, media_type="application/pdf", filename=filename)

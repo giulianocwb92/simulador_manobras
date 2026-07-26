@@ -134,11 +134,22 @@ Marque cada item com [x] ao concluir.
 
 ## FASE 9 — Histórico
 
-- [ ] Página de histórico: lista de manobras finalizadas
-- [ ] Filtros: subestação, data (range), responsável
-- [ ] Card de manobra: título, SEs, responsável, data, status
-- [ ] Ações: visualizar (readonly), baixar PDF, clonar
-- [ ] Clonar: cria novo rascunho com mesmos passos, abre para edição
+- [x] Página de histórico (`/manobras`): lista de manobras finalizadas
+- [x] Filtros: subestação (`se_id`), data (range — `data_inicio`/`data_fim`), responsável
+      (substring case-insensitive em `header.responsavel`)
+- [x] Card de manobra: título, SEs, responsável, data, status
+- [x] Ações: visualizar (readonly, `/manobras/{id}`), baixar PDF, clonar
+- [x] Clonar: `POST /maneuvers/{id}/clone` cria novo rascunho com mesmo cabeçalho e
+      sequência de passos, religado à versão ATUAL de cada SE envolvida; navega para a
+      página de detalhe do clone — "abre para edição" de fato (reordenar/editar/passo
+      manual/finalizar) só funciona dentro do editor de uma SE (StepsPanel/HeaderForm
+      vivem lá); a tela de detalhe do histórico é somente leitura, sem canvas anexado
+
+Bug encontrado e corrigido durante esta fase: `ManeuverRead.header.substations` nunca
+era populado (é só texto livre do formulário de cabeçalho) — card e detalhe mostravam
+"—" nas SEs mesmo com a manobra corretamente vinculada via `ManeuverSubstation`. Corrigido
+expondo `Maneuver.substation_names` (computado a partir da relação real) no schema/tipo,
+usado agora tanto na UI quanto no PDF (que já usava a relação certa, só duplicada).
 
 ---
 

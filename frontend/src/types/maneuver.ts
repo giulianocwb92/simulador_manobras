@@ -25,6 +25,10 @@ export interface Maneuver {
   title: string;
   status: ManeuverStatus;
   header: ManeuverHeader;
+  /** Nomes reais das SEs vinculadas (via ManeuverSubstation no backend) —
+   *  usar isso pra exibição, não `header.substations` (texto livre, nunca
+   *  populado automaticamente). */
+  substation_names: string[];
   steps: ManeuverStep[];
   created_by: string | null;
   created_at: string;
