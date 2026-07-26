@@ -2,13 +2,14 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.models.enums import ManeuverStatus
-from app.models.maneuver import Maneuver, ManeuverStep
+from app.models.maneuver import Maneuver, ManeuverStep, ManeuverSubstation
 from app.schemas.maneuver import (
     ManeuverCreate,
     ManeuverRead,
@@ -26,7 +27,12 @@ router = APIRouter(prefix="/maneuvers", tags=["maneuvers"])
 
 async def _get_maneuver_or_404(db: AsyncSession, maneuver_id: uuid.UUID) -> Maneuver:
     result = await db.execute(
-        select(Maneuver).where(Maneuver.id == maneuver_id).options(selectinload(Maneuver.steps))
+        select(Maneuver)
+        .where(Maneuver.id == maneuver_id)
+        .options(
+            selectinload(Maneuver.steps),
+            selectinload(Maneuver.substations).selectinload(ManeuverSubstation.substation),
+        )
     )
     maneuver = result.scalar_one_or_none()
     if maneuver is None:
@@ -157,3 +163,15 @@ async def finalize_maneuver(maneuver_id: uuid.UUID, db: AsyncSession = Depends(g
     except ManeuverFinalizedError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return await _get_maneuver_or_404(db, maneuver_id)
+
+
+@router.get("/{maneuver_id}/pdf")
+async def get_maneuver_pdf(maneuver_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> FileResponse:
+    maneuver = await _get_maneuver_or_404(db, maneuver_id)
+    # Regenera a cada chamada (o conteúdo pode mudar até a manobra ser
+    # finalizada) — modelo de template PROVISÓRIO, ver maneuver_service.py.
+    substation_names = [ms.substation.name for ms in maneuver.substations if ms.substation is not None]
+    pdf_bytes = maneuver_service.render_pdf(maneuver, substation_names)
+    path = maneuver_service.save_pdf(maneuver.id, pdf_bytes)
+    filename = f"manobra-{maneuver.header.get('numero') or maneuver.id}.pdf"
+    return FileResponse(path, media_type="application/pdf", filename=filename)

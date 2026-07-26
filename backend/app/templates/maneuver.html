@@ -1,0 +1,205 @@
+<!--
+  Template PROVISÓRIO — aguardando o template oficial (ver docs/implementation-plan.md,
+  FASE 8). Estrutura genérica: cabeçalho com logo + campos, lista de passos numerada em
+  fonte monoespaçada (ver docs/architecture.md, "Geração de PDF").
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ titulo }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 2cm 1.8cm;
+      @bottom-center {
+        content: "Página " counter(page) " de " counter(pages);
+        font-size: 9px;
+        color: #64748b;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Liberation Sans", Arial, sans-serif;
+      color: #1e293b;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 2px solid #1e293b;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+
+    header img {
+      height: 44px;
+      /* margin em vez de confiar só no `gap` do flexbox — o WeasyPrint nessa
+         versão não estava respeitando o gap entre o logo e o bloco de título. */
+      margin-right: 16px;
+    }
+
+    header .titulo-bloco {
+      flex: 1;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    header .subtitulo {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .campos {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+
+    .campos td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 8px;
+      vertical-align: top;
+    }
+
+    .campos td.label {
+      width: 110px;
+      background: #f1f5f9;
+      font-weight: bold;
+      color: #475569;
+    }
+
+    .isolamento {
+      margin-bottom: 16px;
+    }
+
+    .isolamento h2,
+    .passos h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #475569;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 3px;
+      margin: 0 0 6px;
+    }
+
+    .isolamento p {
+      margin: 0;
+      white-space: pre-wrap;
+    }
+
+    ol.lista-passos {
+      list-style: none;
+      counter-reset: passo;
+      margin: 0;
+      padding: 0;
+    }
+
+    ol.lista-passos li {
+      counter-increment: passo;
+      display: flex;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-family: "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+    }
+
+    ol.lista-passos li::before {
+      content: counter(passo) ".";
+      flex-shrink: 0;
+      width: 22px;
+      font-weight: bold;
+      color: #475569;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: bold;
+    }
+
+    .badge-abrir { background: #d1fae5; color: #065f46; }
+    .badge-fechar { background: #fee2e2; color: #991b1b; }
+    .badge-manual { background: #e2e8f0; color: #475569; }
+
+    footer.rodape {
+      margin-top: 24px;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    {% if logo_data_uri %}
+      <img src="{{ logo_data_uri }}" alt="Logo" />
+    {% endif %}
+    <div class="titulo-bloco">
+      <h1>{{ titulo }}</h1>
+      <div class="subtitulo">Documento de manobra — modelo provisório</div>
+    </div>
+  </header>
+
+  <table class="campos">
+    <tr>
+      <td class="label">Número</td>
+      <td>{{ numero or "—" }}</td>
+      <td class="label">Data</td>
+      <td>{{ data or "—" }}</td>
+    </tr>
+    <tr>
+      <td class="label">Responsável</td>
+      <td>{{ responsavel or "—" }}</td>
+      <td class="label">Área</td>
+      <td>{{ area or "—" }}</td>
+    </tr>
+    <tr>
+      <td class="label">Subestações</td>
+      <td colspan="3">{{ substations|join(", ") if substations else "—" }}</td>
+    </tr>
+  </table>
+
+  <div class="isolamento">
+    <h2>Descrição do isolamento</h2>
+    <p>{{ descricao_isolamento or "—" }}</p>
+  </div>
+
+  <div class="passos">
+    <h2>Passos da manobra</h2>
+    {% if steps %}
+      <ol class="lista-passos">
+        {% for step in steps %}
+          <li>
+            <span>
+              {{ step.description }}
+              {% if step.action == "ABRIR" %}<span class="badge badge-abrir">ABRIR</span>{% endif %}
+              {% if step.action == "FECHAR" %}<span class="badge badge-fechar">FECHAR</span>{% endif %}
+              {% if step.origin == "MANUAL" %}<span class="badge badge-manual">MANUAL</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p>Nenhum passo registrado.</p>
+    {% endif %}
+  </div>
+
+  <footer class="rodape">
+    Gerado em {{ gerado_em }} — Simulador de Manobras (modelo provisório, aguardando template oficial).
+  </footer>
+</body>
+</html>

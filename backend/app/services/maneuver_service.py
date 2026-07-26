@@ -1,12 +1,22 @@
+import base64
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.ext.asyncio import AsyncSession
+from weasyprint import HTML
 
+from app.core.config import get_settings
 from app.models.enums import ManeuverStatus
 from app.models.maneuver import Maneuver, ManeuverStep, ManeuverSubstation
 from app.models.substation import Substation
 from app.schemas.maneuver import ManeuverCreate, ManeuverHeader, ManeuverStepCreate
+
+_APP_DIR = Path(__file__).resolve().parent.parent
+_TEMPLATES_DIR = _APP_DIR / "templates"
+_STATIC_DIR = _APP_DIR / "static"
+_jinja_env = Environment(loader=FileSystemLoader(_TEMPLATES_DIR))
 
 
 class ManeuverFinalizedError(Exception):
@@ -105,3 +115,55 @@ async def finalize(db: AsyncSession, maneuver: Maneuver) -> Maneuver:
     await db.commit()
     await db.refresh(maneuver)
     return maneuver
+
+
+def _logo_data_uri() -> str | None:
+    """Embute o logo como data URI (em vez de referenciar o arquivo por caminho)
+    pra não depender de `base_url`/permissões de arquivo na hora do WeasyPrint
+    resolver a imagem."""
+    logo_path = _STATIC_DIR / "copel-logo.png"
+    if not logo_path.exists():
+        return None
+    encoded = base64.b64encode(logo_path.read_bytes()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def build_pdf_context(maneuver: Maneuver, substation_names: list[str]) -> dict:
+    """Monta o contexto do template a partir da manobra — ver
+    backend/app/templates/maneuver.html (modelo PROVISÓRIO, aguardando o
+    template oficial, ver docs/implementation-plan.md FASE 8)."""
+    header = maneuver.header
+    return {
+        "titulo": maneuver.title,
+        "numero": header.get("numero"),
+        "data": header.get("data"),
+        "responsavel": header.get("responsavel"),
+        "area": header.get("area"),
+        "substations": substation_names or header.get("substations") or [],
+        "descricao_isolamento": header.get("descricao_isolamento"),
+        "steps": [
+            {
+                "order": step.order,
+                "description": step.description,
+                "action": step.action.value if step.action else None,
+                "origin": step.origin.value,
+            }
+            for step in sorted(maneuver.steps, key=lambda s: s.order)
+        ],
+        "logo_data_uri": _logo_data_uri(),
+        "gerado_em": datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
+    }
+
+
+def render_pdf(maneuver: Maneuver, substation_names: list[str]) -> bytes:
+    template = _jinja_env.get_template("maneuver.html")
+    html_content = template.render(**build_pdf_context(maneuver, substation_names))
+    return HTML(string=html_content, base_url=str(_TEMPLATES_DIR)).write_pdf()
+
+
+def save_pdf(maneuver_id: uuid.UUID, pdf_bytes: bytes) -> Path:
+    pdf_dir = Path(get_settings().storage_path) / "pdfs"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+    path = pdf_dir / f"{maneuver_id}.pdf"
+    path.write_bytes(pdf_bytes)
+    return path

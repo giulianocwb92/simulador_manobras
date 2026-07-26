@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api, API_URL } from "./api";
 import type { Maneuver, ManeuverAction, ManeuverHeader, ManeuverStep, ManeuverStepOrigin } from "../types/maneuver";
 
 export interface ManeuverCreatePayload {
@@ -27,4 +27,7 @@ export const maneuversService = {
   reorderSteps: (maneuverId: string, order: string[]) =>
     api.post<ManeuverStep[]>(`/maneuvers/${maneuverId}/steps/reorder`, { order }),
   finalize: (id: string) => api.post<Maneuver>(`/maneuvers/${id}/finalize`, {}),
+  /** URL direta (não passa por `api.ts`/JSON) — o endpoint devolve o PDF com
+   *  `Content-Disposition: attachment`, então um link normal já baixa o arquivo. */
+  pdfUrl: (id: string) => `${API_URL}/maneuvers/${id}/pdf`,
 };

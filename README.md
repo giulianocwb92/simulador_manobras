@@ -26,6 +26,7 @@ a descrição textual de cada passo e exportar o resultado final em PDF.
 - [x] FASE 5 — Elementos provisórios (Jumper, Chave provisória — falta incorporar à topologia base ao finalizar a manobra)
 - [x] FASE 6 — Simulação de manobra (gravação de passos com geração automática de texto, painel em tempo real, suporte a uma 2ª subestação no mesmo canvas)
 - [x] FASE 7 — Edição da manobra (cabeçalho, editar/reordenar/deletar passos, passo manual, finalizar — tudo persistido via API)
+- [x] FASE 8 — Geração de PDF (template **provisório** — aguardando o modelo oficial; botão "Baixar PDF")
 - [ ] demais fases em [`docs/implementation-plan.md`](docs/implementation-plan.md)
 
 ## Como rodar
@@ -102,6 +103,9 @@ npm run typecheck
 - Uma 2ª subestação pode ser carregada no mesmo canvas (seletor no cabeçalho), lado a
   lado com a principal — útil pra manobras que envolvem duas SEs; os passos gerados a
   partir dela vêm prefixados com a sigla correspondente
+- **"Baixar PDF"**: gera e baixa o PDF da manobra a partir do template em
+  `backend/app/templates/maneuver.html` — **modelo provisório**, com layout genérico
+  (logo + tabela de cabeçalho + passos numerados), aguardando o template oficial
 
 ## Estrutura de pastas
 

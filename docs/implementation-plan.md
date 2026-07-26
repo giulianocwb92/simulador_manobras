@@ -112,13 +112,23 @@ Marque cada item com [x] ao concluir.
 
 ## FASE 8 — Geração de PDF
 
-- [ ] Criar template HTML em `backend/app/templates/maneuver.html`
-  - Aguardar template COPEL fornecido pelo usuário
-  - Placeholder: cabeçalho genérico com campos definidos
-- [ ] Implementar `maneuver_service.py`: monta contexto do template
-- [ ] Integrar WeasyPrint para renderizar HTML → PDF
-- [ ] Endpoint `GET /maneuvers/{id}/pdf` salva em `storage/pdfs/` e retorna arquivo
-- [ ] Botão "Baixar PDF" no frontend
+- [x] Criar template HTML em `backend/app/templates/maneuver.html`
+  - Aguardando o template oficial — este é o modelo PROVISÓRIO: logo (embutido como
+    data URI a partir de `backend/app/static/copel-logo.png`), tabela de cabeçalho
+    (número/data/responsável/área/subestações), descrição do isolamento, passos
+    numerados em fonte monoespaçada com badge ABRIR/FECHAR/MANUAL, rodapé com
+    paginação — trocar pelo template oficial quando ele chegar, o contexto
+    (`build_pdf_context`) não deve precisar mudar
+- [x] Implementar `maneuver_service.py`: `build_pdf_context`/`render_pdf`/`save_pdf`
+      montam o contexto, renderizam via Jinja2 e salvam o PDF
+- [x] Integrar WeasyPrint para renderizar HTML → PDF (`jinja2` adicionado ao
+      requirements.txt — só o WeasyPrint já estava lá desde a FASE 1, mas faltava o
+      motor de template)
+- [x] Endpoint `GET /maneuvers/{id}/pdf` salva em `storage/pdfs/{id}.pdf` (regenerado a
+      cada chamada, pra refletir edições até a manobra ser finalizada) e retorna o
+      arquivo com `Content-Disposition: attachment`
+- [x] Botão "Baixar PDF" no frontend (link direto pro endpoint, visível junto com o
+      painel de edição da manobra)
 
 ---
 

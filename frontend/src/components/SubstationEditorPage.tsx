@@ -347,21 +347,32 @@ export function SubstationEditorPage() {
                 </button>
               </>
             )}
-            {mode === "FINALIZADA" &&
-              (maneuverStatus === "FINALIZADA" ? (
-                <span className="text-xs font-medium text-slate-500">Manobra finalizada</span>
-              ) : (
-                <>
-                  <span className="text-xs font-medium text-slate-500">Editando manobra</span>
-                  <button
-                    type="button"
-                    onClick={handleFinalizeManeuver}
-                    className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+            {mode === "FINALIZADA" && (
+              <>
+                {maneuverId && (
+                  <a
+                    href={maneuversService.pdfUrl(maneuverId)}
+                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                   >
-                    Finalizar Manobra
-                  </button>
-                </>
-              ))}
+                    Baixar PDF
+                  </a>
+                )}
+                {maneuverStatus === "FINALIZADA" ? (
+                  <span className="text-xs font-medium text-slate-500">Manobra finalizada</span>
+                ) : (
+                  <>
+                    <span className="text-xs font-medium text-slate-500">Editando manobra</span>
+                    <button
+                      type="button"
+                      onClick={handleFinalizeManeuver}
+                      className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+                    >
+                      Finalizar Manobra
+                    </button>
+                  </>
+                )}
+              </>
+            )}
           </div>
         )}
       </header>
