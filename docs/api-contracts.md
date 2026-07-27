@@ -49,6 +49,8 @@ DELETE /maneuvers/{id}/steps/{step_id}  → remove passo
 POST   /maneuvers/{id}/steps/reorder    → reordena (body: {order: [ids]})
 
 POST   /maneuvers/{id}/finalize         → finaliza manobra
+POST   /maneuvers/{id}/reopen           → reabre manobra finalizada pra rascunho (usado por
+                                           "Voltar à Gravação" na sessão de manobra)
 POST   /maneuvers/{id}/clone            → clona como novo rascunho
 GET    /maneuvers/{id}/pdf              → gera e retorna PDF
 ```

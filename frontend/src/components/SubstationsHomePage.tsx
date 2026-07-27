@@ -32,7 +32,12 @@ export function SubstationsHomePage() {
   return (
     <div className="mx-auto max-w-3xl p-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Subestações</h1>
+        <div>
+          <Link to="/" className="text-sm text-slate-500 hover:text-slate-700">
+            ← Início
+          </Link>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900">Subestações</h1>
+        </div>
         <div className="flex items-center gap-3">
           <Link to="/manobras" className="text-sm text-slate-500 hover:text-slate-700">
             Histórico de manobras

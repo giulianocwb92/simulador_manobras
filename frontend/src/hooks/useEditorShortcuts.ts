@@ -1,16 +1,20 @@
 import { useEffect } from "react";
-import { useEditorStore } from "../stores/editorStore";
+
+interface EditorShortcutsBindings {
+  rotateSelectedNodes: () => void;
+  wireMode: boolean;
+  setWireMode: (active: boolean) => void;
+}
 
 /**
  * Atalhos globais do editor de topologia: Ctrl+R (rotacionar), W (ferramenta wire),
  * Esc (sair do modo wire). Delete/Backspace não são tratados aqui — ficam a cargo do
  * `deleteKeyCode` do React Flow, que apaga o wire selecionado sem sair da ferramenta.
  */
-export function useEditorShortcuts(enabled: boolean) {
-  const rotateSelectedNodes = useEditorStore((s) => s.rotateSelectedNodes);
-  const wireMode = useEditorStore((s) => s.wireMode);
-  const setWireMode = useEditorStore((s) => s.setWireMode);
-
+export function useEditorShortcuts(
+  enabled: boolean,
+  { rotateSelectedNodes, wireMode, setWireMode }: EditorShortcutsBindings
+) {
   useEffect(() => {
     if (!enabled) return;
 

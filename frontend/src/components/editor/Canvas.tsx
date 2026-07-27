@@ -1,7 +1,7 @@
-import { useCallback, useMemo, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { Background, ConnectionMode, Controls, MiniMap, ReactFlow, useReactFlow, type Connection, type Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useEditorStore } from "../../stores/editorStore";
+import type { TopologyBindings } from "../../stores/topologyBindings";
 import { nodeTypes } from "../../nodes";
 import { VOLTAGE_COLORS, type BarraData, type EquipmentKind } from "../../types/topology";
 import { WIRE_UNCONNECTED_STROKE } from "../../constants/voltageColors";
@@ -11,6 +11,10 @@ import { validateConnection } from "./connectionValidation";
 import { WirePreview } from "./WirePreview";
 
 interface CanvasProps {
+  /** Fatia de estado/ações de topologia (nós, arestas, wire tool, rotação) —
+   *  vem de `editorStore` (cadastro de SE) ou `sessionStore` (sessão de
+   *  manobra efêmera), ver `stores/topologyBindings.ts`. */
+  topology: TopologyBindings;
   readOnly?: boolean;
   /** Modo GRAVANDO: clique em DJ/CH/Religador alterna estado em vez de abrir o modal de propriedades. */
   recording?: boolean;
@@ -30,6 +34,7 @@ interface CanvasProps {
 }
 
 export function Canvas({
+  topology,
   readOnly = false,
   recording = false,
   fitView = true,
@@ -38,18 +43,36 @@ export function Canvas({
   onConnectError,
   onDropEquipment,
 }: CanvasProps) {
-  const nodes = useEditorStore((s) => s.nodes);
-  const edges = useEditorStore((s) => s.edges);
-  const onNodesChange = useEditorStore((s) => s.onNodesChange);
-  const onEdgesChange = useEditorStore((s) => s.onEdgesChange);
-  const addEdgeToStore = useEditorStore((s) => s.addEdge);
-  const removeEdge = useEditorStore((s) => s.removeEdge);
-  const wireMode = useEditorStore((s) => s.wireMode);
-  const wirePending = useEditorStore((s) => s.wirePending);
-  const startWire = useEditorStore((s) => s.startWire);
-  const cancelWire = useEditorStore((s) => s.cancelWire);
-  const addBarHandle = useEditorStore((s) => s.addBarHandle);
-  const { screenToFlowPosition } = useReactFlow();
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    addEdge: addEdgeToStore,
+    removeEdge,
+    wireMode,
+    wirePending,
+    startWire,
+    cancelWire,
+    addBarHandle,
+  } = topology;
+  const { screenToFlowPosition, fitView: doFitView } = useReactFlow();
+
+  // Reenquadra sempre que o nº de nós CRESCE (ex.: sessão de manobra que
+  // importa 2+ SEs em sequência — a 2ª só termina de montar depois do
+  // primeiro fitView nativo do <ReactFlow>, que mede só o que já existia).
+  // Um frame de espera deixa os nós recém-chegados serem medidos primeiro
+  // (BarraNode só registra seus handles num efeito que roda depois do mount).
+  const nodeCount = nodes.length;
+  useEffect(() => {
+    if (!fitView || nodeCount === 0) return;
+    // Um único requestAnimationFrame não é suficiente: a medição de nós novos
+    // no React Flow (via ResizeObserver interno + `useUpdateNodeInternals` nas
+    // barras) só termina de assentar alguns ciclos depois do commit. 50ms de
+    // atraso é imperceptível aqui (reenquadre é só conveniência).
+    const timeout = window.setTimeout(() => doFitView(), 50);
+    return () => window.clearTimeout(timeout);
+  }, [fitView, nodeCount, doFitView]);
 
   const completeConnection = useCallback(
     (connection: Connection) => {
@@ -258,7 +281,7 @@ export function Canvas({
         <Controls />
         <MiniMap pannable zoomable />
       </ReactFlow>
-      <WirePreview />
+      <WirePreview wirePending={wirePending} />
     </div>
   );
 }

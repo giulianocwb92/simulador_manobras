@@ -108,19 +108,37 @@
     ol.lista-passos li {
       counter-increment: passo;
       display: flex;
-      gap: 8px;
-      padding: 5px 0;
+      align-items: baseline;
+      padding: 6px 0;
       border-bottom: 1px solid #e2e8f0;
       font-family: "Liberation Mono", "Courier New", monospace;
       font-size: 11px;
     }
 
+    /* Espaçamentos abaixo usam margin/padding explícitos, não `gap` do flex —
+       o WeasyPrint (versão usada aqui) não aplica `gap` de forma confiável
+       entre itens flex, especialmente envolvendo o `::before` do contador. */
     ol.lista-passos li::before {
       content: counter(passo) ".";
       flex-shrink: 0;
       width: 22px;
+      margin-right: 8px;
       font-weight: bold;
       color: #475569;
+    }
+
+    /* Agrupa responsabilidade + badge de ação numa coluna própria, com largura
+       fixa, borda à direita e margem até a descrição — sem isso a descrição
+       colava logo depois do texto de responsabilidade, sem respiro visual
+       entre as duas colunas. */
+    .meta {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      width: 94px;
+      padding-right: 10px;
+      margin-right: 12px;
+      border-right: 1px solid #cbd5e1;
     }
 
     .badge {
@@ -130,16 +148,19 @@
       border-radius: 3px;
       font-size: 9px;
       font-weight: bold;
+      white-space: nowrap;
     }
 
     .badge-abrir { background: #d1fae5; color: #065f46; }
     .badge-fechar { background: #fee2e2; color: #991b1b; }
 
     .responsabilidade {
-      flex-shrink: 0;
-      width: 46px;
       font-weight: bold;
       color: #475569;
+    }
+
+    .descricao {
+      flex: 1;
     }
 
     footer.rodape {
@@ -190,12 +211,12 @@
       <ol class="lista-passos">
         {% for step in steps %}
           <li>
-            <span class="responsabilidade">{{ step.responsibility }}</span>
-            <span>
-              {{ step.description }}
+            <span class="meta">
+              <span class="responsabilidade">{{ step.responsibility }}</span>
               {% if step.action == "ABRIR" %}<span class="badge badge-abrir">ABRIR</span>{% endif %}
               {% if step.action == "FECHAR" %}<span class="badge badge-fechar">FECHAR</span>{% endif %}
             </span>
+            <span class="descricao">{{ step.description }}</span>
           </li>
         {% endfor %}
       </ol>

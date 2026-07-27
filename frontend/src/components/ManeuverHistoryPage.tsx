@@ -46,9 +46,17 @@ export function ManeuverHistoryPage() {
   return (
     <div className="mx-auto max-w-4xl p-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Histórico de manobras</h1>
-        <Link to="/" className="text-sm text-slate-500 hover:text-slate-700">
-          ← Subestações
+        <div>
+          <Link to="/" className="text-sm text-slate-500 hover:text-slate-700">
+            ← Início
+          </Link>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900">Histórico de manobras</h1>
+        </div>
+        <Link
+          to="/manobras/nova"
+          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+        >
+          Nova Sessão de Manobra
         </Link>
       </div>
 

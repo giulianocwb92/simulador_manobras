@@ -107,7 +107,6 @@ async def add_step(db: AsyncSession, maneuver: Maneuver, payload: ManeuverStepCr
         description=payload.description,
         equipment_id=payload.equipment_id,
         action=payload.action,
-        origin=payload.origin,
         responsibility=payload.responsibility,
     )
     db.add(step)
@@ -167,6 +166,19 @@ async def finalize(db: AsyncSession, maneuver: Maneuver) -> Maneuver:
     return maneuver
 
 
+async def reopen(db: AsyncSession, maneuver: Maneuver) -> Maneuver:
+    """Reabre uma manobra FINALIZADA de volta pra RASCUNHO — usado pelo fluxo
+    "Voltar à Gravação" da sessão de manobra (ver ManeuverSessionPage no
+    frontend), que precisa reabrir os passos pra edição (limpar e regravar)
+    mesmo numa manobra já finalizada. Não passa por `assert_editable` de
+    propósito — é exatamente o que destrava a edição."""
+    maneuver.status = ManeuverStatus.RASCUNHO
+    maneuver.finalized_at = None
+    await db.commit()
+    await db.refresh(maneuver)
+    return maneuver
+
+
 async def clone_maneuver(db: AsyncSession, original: Maneuver) -> Maneuver:
     """Cria um novo RASCUNHO com o mesmo cabeçalho e sequência de passos —
     ver docs/domain-model.md "Histórico de manobras". As SEs envolvidas são
@@ -188,7 +200,6 @@ async def clone_maneuver(db: AsyncSession, original: Maneuver) -> Maneuver:
                 description=step.description,
                 equipment_id=step.equipment_id,
                 action=step.action,
-                origin=step.origin,
                 responsibility=step.responsibility,
             )
         )

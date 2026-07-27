@@ -187,6 +187,16 @@ async def finalize_maneuver(maneuver_id: uuid.UUID, db: AsyncSession = Depends(g
     return await _get_maneuver_or_404(db, maneuver_id)
 
 
+@router.post("/{maneuver_id}/reopen", response_model=ManeuverRead)
+async def reopen_maneuver(maneuver_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> Maneuver:
+    """Reabre uma manobra FINALIZADA pra RASCUNHO — usado pelo "Voltar à
+    Gravação" da sessão de manobra (ManeuverSessionPage), que precisa poder
+    limpar/regravar os passos mesmo numa manobra já finalizada."""
+    maneuver = await _get_maneuver_or_404(db, maneuver_id)
+    await maneuver_service.reopen(db, maneuver)
+    return await _get_maneuver_or_404(db, maneuver_id)
+
+
 @router.post("/{maneuver_id}/clone", response_model=ManeuverRead, status_code=status.HTTP_201_CREATED)
 async def clone_maneuver(maneuver_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> Maneuver:
     original = await _get_maneuver_or_404(db, maneuver_id)

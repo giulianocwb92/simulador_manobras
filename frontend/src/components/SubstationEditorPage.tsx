@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ReactFlowProvider, type Edge } from "@xyflow/react";
+import { ReactFlowProvider } from "@xyflow/react";
 import { ApiError } from "../services/api";
 import { substationsService } from "../services/substations";
 import { useEditorStore } from "../stores/editorStore";
-import { useManeuverStore } from "../stores/maneuverStore";
 import { useUserStore } from "../stores/userStore";
 import { useAutoSave } from "../hooks/useAutoSave";
 import { useEditorShortcuts } from "../hooks/useEditorShortcuts";
@@ -13,41 +12,9 @@ import { Canvas } from "./editor/Canvas";
 import { Toolbar } from "./editor/Toolbar";
 import { LockBanner } from "./editor/LockBanner";
 import { PropertiesModal, type PropertiesModalSubmitPayload } from "./editor/PropertiesModal";
-import { StepsPanel } from "./maneuver/StepsPanel";
-import { generateStepDescription, TOGGLEABLE_KINDS } from "../utils/maneuverStepText";
-import { incorporatePermanentProvisionals } from "../utils/provisionalElements";
-import { maneuversService } from "../services/maneuvers";
-import type { EquipmentKind, EquipmentState, TopologyNode } from "../types/topology";
-import type { ManeuverAction } from "../types/maneuver";
-import type { Substation, Topology } from "../types/substation";
-
-function topologyToStore(topology: Topology): { nodes: TopologyNode[]; edges: Edge[] } {
-  // dados legados sem position/data (ex: escritos manualmente antes desta versão) são ignorados
-  const nodes = topology.nodes.filter(
-    (n) => n.position && typeof n.position.x === "number" && n.data !== undefined
-  ) as unknown as TopologyNode[];
-  const edges: Edge[] = topology.edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    sourceHandle: e.sourceHandle ?? undefined,
-    targetHandle: e.targetHandle ?? undefined,
-  }));
-  return { nodes, edges };
-}
-
-function storeToTopology(nodes: TopologyNode[], edges: Edge[]): Topology {
-  return {
-    nodes: nodes.map((n) => ({ id: n.id, type: n.type ?? "", position: n.position, data: n.data })),
-    edges: edges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      sourceHandle: e.sourceHandle ?? null,
-      targetHandle: e.targetHandle ?? null,
-    })),
-  };
-}
+import { topologyToStore, storeToTopology } from "../utils/topologySerialization";
+import type { EquipmentKind, TopologyNode } from "../types/topology";
+import type { Substation } from "../types/substation";
 
 type ModalState =
   | { mode: "create"; kind: EquipmentKind; position: { x: number; y: number } }
@@ -61,29 +28,27 @@ export function SubstationEditorPage() {
 
   const nodes = useEditorStore((s) => s.nodes);
   const edges = useEditorStore((s) => s.edges);
-  const mode = useEditorStore((s) => s.mode);
-  const setMode = useEditorStore((s) => s.setMode);
+  const onNodesChange = useEditorStore((s) => s.onNodesChange);
+  const onEdgesChange = useEditorStore((s) => s.onEdgesChange);
+  const addEdge = useEditorStore((s) => s.addEdge);
+  const removeEdge = useEditorStore((s) => s.removeEdge);
+  const rotateSelectedNodes = useEditorStore((s) => s.rotateSelectedNodes);
+  const wireMode = useEditorStore((s) => s.wireMode);
+  const setWireMode = useEditorStore((s) => s.setWireMode);
+  const wirePending = useEditorStore((s) => s.wirePending);
+  const startWire = useEditorStore((s) => s.startWire);
+  const cancelWire = useEditorStore((s) => s.cancelWire);
+  const addBarHandle = useEditorStore((s) => s.addBarHandle);
   const setTopology = useEditorStore((s) => s.setTopology);
   const addNode = useEditorStore((s) => s.addNode);
   const updateNodeData = useEditorStore((s) => s.updateNodeData);
   const reset = useEditorStore((s) => s.reset);
-  const secondarySubstation = useEditorStore((s) => s.secondarySubstation);
-  const secondaryIds = useEditorStore((s) => s.secondaryIds);
-  const loadSecondarySubstation = useEditorStore((s) => s.loadSecondarySubstation);
-  const unloadSecondarySubstation = useEditorStore((s) => s.unloadSecondarySubstation);
-  const addManeuverStep = useManeuverStore((s) => s.addStep);
-  const resetManeuver = useManeuverStore((s) => s.reset);
-  const maneuverId = useManeuverStore((s) => s.maneuverId);
-  const setManeuverId = useManeuverStore((s) => s.setManeuverId);
-  const maneuverStatus = useManeuverStore((s) => s.status);
-  const setManeuverStatus = useManeuverStore((s) => s.setStatus);
 
   const [ownsLock, setOwnsLock] = useState(false);
   const [lockedByName, setLockedByName] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ModalState>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [secondarySubstationId, setSecondarySubstationId] = useState<string | null>(null);
 
   const { data: substation } = useQuery({
     queryKey: ["substations", id],
@@ -106,39 +71,11 @@ export function SubstationEditorPage() {
     queryFn: substationsService.list,
   });
 
-  // SE adicional carregada no mesmo canvas (view + toggle de estado durante a
-  // gravação) — ver docs/implementation-plan.md FASE 6, "suporte a múltiplas SEs".
-  // Só uma leitura (GET), sem lock: essa SE não é editada nem salva por aqui.
-  const { data: secondaryData } = useQuery({
-    queryKey: ["substations", secondarySubstationId],
-    queryFn: () => substationsService.get(secondarySubstationId!),
-    enabled: !!secondarySubstationId,
-  });
-
   useEffect(() => {
     if (!substation) return;
     const { nodes: loadedNodes, edges: loadedEdges } = topologyToStore(substation.topology);
     setTopology(loadedNodes, loadedEdges);
   }, [substation, setTopology]);
-
-  useEffect(() => {
-    if (!secondaryData) return;
-    const { nodes: loadedNodes, edges: loadedEdges } = topologyToStore(secondaryData.topology);
-    loadSecondarySubstation(
-      { id: secondaryData.id, name: secondaryData.name, sigla: secondaryData.sigla },
-      loadedNodes,
-      loadedEdges
-    );
-  }, [secondaryData, loadSecondarySubstation]);
-
-  function handleSecondarySubstationChange(newId: string) {
-    if (!newId) {
-      unloadSecondarySubstation();
-      setSecondarySubstationId(null);
-      return;
-    }
-    setSecondarySubstationId(newId);
-  }
 
   useEffect(() => {
     if (!id || !currentUser) return;
@@ -170,17 +107,13 @@ export function SubstationEditorPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [id, currentUser, ownsLock]);
 
-  useEditorShortcuts(ownsLock && mode === "CONFIGURACAO");
+  useEditorShortcuts(ownsLock, { rotateSelectedNodes, wireMode, setWireMode });
 
   async function save() {
     if (!id || !currentUser) return;
     setSaveStatus("saving");
     try {
-      // Nós/arestas da SE secundária (ver secondaryIds) não pertencem a essa SE —
-      // ficam de fora do PUT pra não gravar o diagrama de outra subestação aqui.
-      const ownNodes = nodes.filter((n) => !secondaryIds.has(n.id));
-      const ownEdges = edges.filter((e) => !secondaryIds.has(e.id));
-      const updated = await substationsService.updateTopology(id, currentUser.id, storeToTopology(ownNodes, ownEdges));
+      const updated = await substationsService.updateTopology(id, currentUser.id, storeToTopology(nodes, edges));
       queryClient.setQueryData<Substation>(["substations", id], updated);
       setSaveStatus("saved");
     } catch {
@@ -217,90 +150,6 @@ export function SubstationEditorPage() {
     setModalState(null);
   }
 
-  // Modo GRAVANDO (ver docs/editor-topology.md): clique num DJ/CH/Religador
-  // alterna o estado e gera automaticamente um passo na manobra, persistido
-  // na hora (mesmo espírito do auto-save da topologia — não perder passos se
-  // a aba fechar no meio da gravação).
-  async function handleEquipmentToggle(nodeId: string) {
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node || !TOGGLEABLE_KINDS.has(node.type as EquipmentKind)) return;
-    const data = node.data as { estado?: EquipmentState; label?: string };
-    if (!data.estado || !data.label) return;
-    const novoEstado: EquipmentState = data.estado === "aberto" ? "fechado" : "aberto";
-    const acao: ManeuverAction = novoEstado === "aberto" ? "ABRIR" : "FECHAR";
-    updateNodeData(nodeId, { estado: novoEstado });
-    // Com 2 SEs carregadas, prefixa cada passo com a sigla de onde o equipamento
-    // está de fato — sem isso "Abrir DJ 52-01" fica ambíguo entre as duas SEs.
-    const siglaSe = secondarySubstation
-      ? secondaryIds.has(nodeId)
-        ? secondarySubstation.sigla
-        : substation?.sigla
-      : undefined;
-    const description = generateStepDescription(node.type as EquipmentKind, data.label, acao, siglaSe);
-    if (!description) return;
-
-    const payload = { description, equipment_id: nodeId, action: acao, origin: "SIMULADOR" as const };
-    const currentManeuverId = useManeuverStore.getState().maneuverId;
-    if (currentManeuverId) {
-      try {
-        const persisted = await maneuversService.addStep(currentManeuverId, payload);
-        addManeuverStep(persisted);
-        return;
-      } catch {
-        setConnectError("Não foi possível salvar o passo — seguindo só localmente.");
-      }
-    }
-    const currentSteps = useManeuverStore.getState().steps;
-    addManeuverStep({ id: crypto.randomUUID(), order: currentSteps.length + 1, responsibility: "CENTRO", ...payload });
-  }
-
-  async function handleStartRecording() {
-    resetManeuver();
-    setMode("GRAVANDO");
-    if (!id || !substation) return;
-    const substationIds = [id, ...(secondarySubstation ? [secondarySubstation.id] : [])];
-    try {
-      const created = await maneuversService.create({
-        title: `Manobra ${substation.name}`,
-        created_by: currentUser?.id ?? null,
-        substation_ids: substationIds,
-      });
-      setManeuverId(created.id);
-      setManeuverStatus(created.status);
-    } catch {
-      setConnectError("Não foi possível criar o registro da manobra — os passos ficarão só locais, sem salvar.");
-    }
-  }
-
-  function handleFinishRecording() {
-    setMode("FINALIZADA");
-  }
-
-  // Ver docs/domain-model.md "Elementos provisórios": jumper/chave provisória
-  // com `permanente: true` passam a fazer parte da topologia base da SE ao
-  // finalizar; os temporários nunca são persistidos. Só cobre a SE principal —
-  // a secundária (ver secondaryIds) é só leitura/toggle nesta tela, não tem
-  // como ganhar um provisório novo por aqui (Toolbar só aparece em CONFIGURAÇÃO,
-  // que edita exclusivamente a SE principal).
-  async function handleFinalizeManeuver() {
-    if (!maneuverId || !id || !currentUser) return;
-    try {
-      const ownNodes = nodes.filter((n) => !secondaryIds.has(n.id));
-      const ownEdges = edges.filter((e) => !secondaryIds.has(e.id));
-      const incorporated = incorporatePermanentProvisionals(ownNodes, ownEdges);
-      const updatedSubstation = await substationsService.updateTopology(
-        id,
-        currentUser.id,
-        storeToTopology(incorporated.nodes, incorporated.edges)
-      );
-      queryClient.setQueryData<Substation>(["substations", id], updatedSubstation);
-      const finalized = await maneuversService.finalize(maneuverId);
-      setManeuverStatus(finalized.status);
-    } catch {
-      setConnectError("Não foi possível finalizar a manobra.");
-    }
-  }
-
   const substationOptions = (allSubstations ?? []).filter((s) => s.id !== id).map((s) => ({ id: s.id, name: s.name }));
 
   if (!substation) {
@@ -311,7 +160,7 @@ export function SubstationEditorPage() {
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
         <div className="flex items-center gap-3">
-          <Link to="/" className="text-sm text-slate-500 hover:text-slate-700">
+          <Link to="/substations" className="text-sm text-slate-500 hover:text-slate-700">
             ← Subestações
           </Link>
           <h1 className="text-sm font-semibold text-slate-900">
@@ -320,95 +169,21 @@ export function SubstationEditorPage() {
         </div>
         {ownsLock && (
           <div className="flex items-center gap-3">
-            {mode !== "FINALIZADA" && (
-              <label className="flex items-center gap-1.5 text-xs text-slate-500">
-                2ª SE (opcional)
-                <select
-                  value={secondarySubstationId ?? ""}
-                  onChange={(e) => handleSecondarySubstationChange(e.target.value)}
-                  className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                >
-                  <option value="">— nenhuma —</option>
-                  {substationOptions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {mode === "CONFIGURACAO" && (
-              <>
-                {saveStatus === "saving" && <span className="text-xs text-slate-400">Salvando...</span>}
-                {saveStatus === "saved" && <span className="text-xs text-emerald-600">Salvo</span>}
-                {saveStatus === "error" && <span className="text-xs text-red-600">Erro ao salvar</span>}
-                <button
-                  type="button"
-                  onClick={save}
-                  className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-                >
-                  Salvar subestação
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStartRecording}
-                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
-                >
-                  Iniciar Gravação
-                </button>
-              </>
-            )}
-            {mode === "GRAVANDO" && (
-              <>
-                <span className="flex items-center gap-1.5 text-xs font-medium text-red-600">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" /> Gravando manobra
-                </span>
-                <button
-                  type="button"
-                  onClick={handleFinishRecording}
-                  className="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-900"
-                >
-                  Finalizar Gravação
-                </button>
-              </>
-            )}
-            {mode === "FINALIZADA" && (
-              <>
-                {maneuverStatus === "FINALIZADA" ? (
-                  <span className="text-xs font-medium text-slate-500">Manobra finalizada</span>
-                ) : (
-                  <>
-                    <span className="text-xs font-medium text-slate-500">Editando manobra</span>
-                    <button
-                      type="button"
-                      onClick={handleFinalizeManeuver}
-                      className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
-                    >
-                      Finalizar Manobra
-                    </button>
-                  </>
-                )}
-              </>
-            )}
+            {saveStatus === "saving" && <span className="text-xs text-slate-400">Salvando...</span>}
+            {saveStatus === "saved" && <span className="text-xs text-emerald-600">Salvo</span>}
+            {saveStatus === "error" && <span className="text-xs text-red-600">Erro ao salvar</span>}
+            <button
+              type="button"
+              onClick={save}
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              Salvar subestação
+            </button>
           </div>
         )}
       </header>
 
       {lockedByName && !ownsLock && <LockBanner lockedByName={lockedByName} />}
-
-      {secondarySubstation && (
-        <div className="flex items-center justify-between border-b border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
-          2ª SE carregada no canvas (à direita, separada visualmente): <strong>{secondarySubstation.name}</strong>{" "}
-          ({secondarySubstation.sigla}) — visualização apenas, não é salva por esta tela.
-          <button
-            type="button"
-            onClick={() => handleSecondarySubstationChange("")}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            remover
-          </button>
-        </div>
-      )}
 
       {connectError && (
         <div className="flex items-center justify-between border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
@@ -420,25 +195,40 @@ export function SubstationEditorPage() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        {ownsLock && mode === "CONFIGURACAO" && <Toolbar />}
+        {ownsLock && (
+          <Toolbar
+            nodes={nodes}
+            rotateSelectedNodes={rotateSelectedNodes}
+            wireMode={wireMode}
+            setWireMode={setWireMode}
+          />
+        )}
         <div className="flex-1">
           <ReactFlowProvider>
             <Canvas
-              readOnly={!ownsLock || mode === "FINALIZADA"}
-              recording={ownsLock && mode === "GRAVANDO"}
+              topology={{
+                nodes,
+                edges,
+                onNodesChange,
+                onEdgesChange,
+                addEdge,
+                removeEdge,
+                rotateSelectedNodes,
+                wireMode,
+                setWireMode,
+                wirePending,
+                startWire,
+                cancelWire,
+                addBarHandle,
+              }}
+              readOnly={!ownsLock}
               fitView={hasInitialNodesRef.current ?? false}
               onNodeDoubleClick={handleNodeDoubleClick}
-              onEquipmentToggle={handleEquipmentToggle}
               onConnectError={setConnectError}
               onDropEquipment={handleDropEquipment}
             />
           </ReactFlowProvider>
         </div>
-        {(mode === "GRAVANDO" || mode === "FINALIZADA") && (
-          <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-white">
-            <StepsPanel readOnly={mode === "GRAVANDO" || maneuverStatus === "FINALIZADA"} />
-          </aside>
-        )}
       </div>
 
       {modalState && (

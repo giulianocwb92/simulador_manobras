@@ -11,11 +11,6 @@ class ManeuverAction(str, enum.Enum):
     FECHAR = "FECHAR"
 
 
-class ManeuverStepOrigin(str, enum.Enum):
-    SIMULADOR = "SIMULADOR"
-    MANUAL = "MANUAL"
-
-
 class ManeuverStepResponsibility(str, enum.Enum):
     LOCAL = "LOCAL"
     CENTRO = "CENTRO"

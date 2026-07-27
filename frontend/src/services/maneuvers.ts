@@ -5,7 +5,6 @@ import type {
   ManeuverHeader,
   ManeuverStatus,
   ManeuverStep,
-  ManeuverStepOrigin,
   ManeuverStepResponsibility,
 } from "../types/maneuver";
 
@@ -28,7 +27,6 @@ export interface ManeuverStepCreatePayload {
   description: string;
   equipment_id?: string | null;
   action?: ManeuverAction | null;
-  origin?: ManeuverStepOrigin;
   responsibility?: ManeuverStepResponsibility;
 }
 
@@ -58,6 +56,8 @@ export const maneuversService = {
   reorderSteps: (maneuverId: string, order: string[]) =>
     api.post<ManeuverStep[]>(`/maneuvers/${maneuverId}/steps/reorder`, { order }),
   finalize: (id: string) => api.post<Maneuver>(`/maneuvers/${id}/finalize`, {}),
+  /** Reabre uma manobra finalizada pra rascunho — usado por "Voltar à Gravação". */
+  reopen: (id: string) => api.post<Maneuver>(`/maneuvers/${id}/reopen`, {}),
   /** URL direta (não passa por `api.ts`/JSON) — o endpoint devolve o PDF com
    *  `Content-Disposition: inline`, então renderiza direto num <iframe> ou
    *  numa aba do navegador, sem forçar download. */

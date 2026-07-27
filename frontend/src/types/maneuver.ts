@@ -1,5 +1,4 @@
 export type ManeuverAction = "ABRIR" | "FECHAR";
-export type ManeuverStepOrigin = "SIMULADOR" | "MANUAL";
 export type ManeuverStepResponsibility = "LOCAL" | "CENTRO";
 export type ManeuverStatus = "RASCUNHO" | "FINALIZADA";
 
@@ -9,7 +8,6 @@ export interface ManeuverStep {
   description: string;
   equipment_id: string | null;
   action: ManeuverAction | null;
-  origin: ManeuverStepOrigin;
   responsibility: ManeuverStepResponsibility;
 }
 

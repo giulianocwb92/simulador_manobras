@@ -62,6 +62,8 @@ export interface TFData extends BaseEquipmentData {
   tensao_at: VoltageLevel;
   tensao_bt: VoltageLevel;
   potencia_mva?: number;
+  /** Permite propagação de cor BT → AT através deste TF. Default: false (só AT → BT). */
+  propagacaoReversa?: boolean;
 }
 
 export interface TF3Data extends BaseEquipmentData {
@@ -71,6 +73,8 @@ export interface TF3Data extends BaseEquipmentData {
   tensao_bt: VoltageLevel;
   tensao_ter: VoltageLevel;
   potencia_mva?: number;
+  /** Permite propagação de cor BT/terciário → AT através deste TF. Default: false (só AT → BT/terciário). */
+  propagacaoReversa?: boolean;
 }
 
 export interface ReligadorData extends BaseEquipmentData {
@@ -90,16 +94,12 @@ export interface TCData extends BaseEquipmentData {
 export interface JumperData extends BaseEquipmentData {
   label: string;
   nome: string;
-  /** Provisórios permanentes são incorporados à topologia base ao finalizar a manobra. */
-  permanente: boolean;
 }
 
 export interface ChaveProvisoriaData extends BaseEquipmentData {
   label: string;
   nome: string;
   estado: EquipmentState;
-  /** Provisórios permanentes são incorporados à topologia base ao finalizar a manobra. */
-  permanente: boolean;
 }
 
 export interface LinhaData extends Record<string, unknown> {
@@ -146,9 +146,6 @@ export type TopologyNode =
   | LinhaNodeType
   | JumperNodeType
   | ChaveProvisoriaNodeType;
-
-/** Tipos de equipamento cujo item, ao ser finalizado com `permanente = true`, é incorporado à topologia base. */
-export const PROVISIONAL_KINDS: ReadonlySet<EquipmentKind> = new Set(["jumper", "chave_provisoria"]);
 
 /**
  * Tensão associada a um terminal específico de um nó, usada tanto para

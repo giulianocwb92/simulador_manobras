@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import ManeuverAction, ManeuverStatus, ManeuverStepOrigin, ManeuverStepResponsibility
+from app.models.enums import ManeuverAction, ManeuverStatus, ManeuverStepResponsibility
 
 
 class ManeuverHeader(BaseModel):
@@ -20,7 +20,6 @@ class ManeuverStepCreate(BaseModel):
     description: str
     equipment_id: str | None = None
     action: ManeuverAction | None = None
-    origin: ManeuverStepOrigin = ManeuverStepOrigin.MANUAL
     responsibility: ManeuverStepResponsibility = ManeuverStepResponsibility.CENTRO
 
 
@@ -32,7 +31,6 @@ class ManeuverStepRead(BaseModel):
     description: str
     equipment_id: str | None
     action: ManeuverAction | None
-    origin: ManeuverStepOrigin
     responsibility: ManeuverStepResponsibility
 
 

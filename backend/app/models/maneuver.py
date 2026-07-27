@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-from app.models.enums import ManeuverAction, ManeuverStatus, ManeuverStepOrigin, ManeuverStepResponsibility
+from app.models.enums import ManeuverAction, ManeuverStatus, ManeuverStepResponsibility
 
 
 class Maneuver(Base):
@@ -57,9 +57,6 @@ class ManeuverStep(Base):
     description: Mapped[str] = mapped_column(String, nullable=False)
     equipment_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     action: Mapped[ManeuverAction | None] = mapped_column(Enum(ManeuverAction, name="maneuver_action"), nullable=True)
-    origin: Mapped[ManeuverStepOrigin] = mapped_column(
-        Enum(ManeuverStepOrigin, name="maneuver_step_origin"), nullable=False
-    )
     responsibility: Mapped[ManeuverStepResponsibility] = mapped_column(
         Enum(ManeuverStepResponsibility, name="maneuver_step_responsibility"),
         nullable=False,

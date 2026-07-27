@@ -235,7 +235,6 @@ export function ManeuverEditPage() {
       const created = await maneuversService.addStep(id, {
         description: "",
         action: null,
-        origin: "MANUAL",
         responsibility: "CENTRO",
       });
       const next = [...steps];

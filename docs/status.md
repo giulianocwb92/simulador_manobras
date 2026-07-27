@@ -1,51 +1,102 @@
 # Estado atual do projeto
 
-> Última atualização: 2026-07-27. `origin/main` está em `7972f95` (inclui a refatoração de
-> edição de manobra + preview de PDF + numeração automática descrita abaixo, já commitada e
-> enviada). A working tree tem, além disso, a incorporação de elementos provisórios permanentes
-> (fecha o último item pendente da FASE 5) implementada e testada nesta sessão, **ainda não
-> commitada** ("nunca commite — só implemente e reporte" segue valendo até pedido em contrário).
+> Última atualização: 2026-07-27. Esta sessão implementou as 6 frentes de
+> `docs/refatorar_manobras.md` (bugfix de propagação de cor, home/navegação, sessão de manobra
+> efêmera, limpeza de backend, template de PDF, voltar à gravação) — sendo commitada agora.
 > Este documento é um retrato do progresso — para o checklist vivo, ver `docs/implementation-plan.md`.
 
 ## Resumo
 
-FASES 1 a 9 do `implementation-plan.md` estão completas — a FASE 5 acaba de fechar (item
-pendente de incorporação de provisórios permanentes, ver seção própria). Falta só a FASE 10
-(polimento e entrega). Commitada e em `origin/main` também está uma refatoração ad-hoc grande do
-fluxo de manobra (numeração automática, responsabilidade LOCAL/CENTRO por passo, preview de PDF
-inline, tela dedicada de edição).
+FASES 1 a 9 do `implementation-plan.md` estão completas; FASE 10 (polimento) segue pendente. Por
+cima disso, `docs/refatorar_manobras.md` foi implementado por inteiro nesta sessão — a mudança
+mais profunda é a **FRENTE 2**: gravação de manobra deixou de acontecer dentro do editor de SE e
+virou uma sessão efêmera separada (`/manobras/nova`), que nunca persiste topologia de volta no
+banco. Isso reverte a feature de "incorporação de provisório permanente" que a FASE 5 tinha
+fechado — ver seção própria abaixo.
 
 ## O que existe e funciona
 
 **Backend** (`backend/app/`): FastAPI + SQLAlchemy 2.0 async + Alembic, com routers `users`,
 `substations` (CRUD, lock/unlock com timeout de 30min, versionamento) e `maneuvers` (CRUD,
-passos com reorder, finalize, clone, PDF). `maneuver_service.py` monta o contexto do PDF e
+passos com reorder, finalize, reopen, clone, PDF). `maneuver_service.py` monta o contexto do PDF e
 renderiza via Jinja2 + WeasyPrint.
 
 **Frontend** (`frontend/src/`): React 18 + Vite + `@xyflow/react` + Zustand + React Query,
-com react-router (`/`, `/substations/:id`, `/manobras`, `/manobras/:id`, `/manobras/:id/editar`,
-`/manobras/:id/pdf`) e `@dnd-kit` pro drag-and-drop de passos. Editor de topologia
-completo com 12 tipos de nó (`frontend/src/nodes/`: Barra unificada, DJ, CH, TF, TF3,
-Religador, TP, TC, Linha, Jumper, Chave Provisória, mais o `EquipmentNodeShell` compartilhado),
-ferramenta de wire estilo LTSpice, rotação (Ctrl+R), propagação de cor no modo GRAVANDO,
-painel de manobra (cabeçalho, passos, histórico) e página de histórico com filtros/clone.
+com react-router (`/`, `/substations`, `/substations/:id`, `/manobras`, `/manobras/nova`,
+`/manobras/:id`, `/manobras/:id/editar`, `/manobras/:id/pdf`) e `@dnd-kit` pro drag-and-drop de
+passos. `HomePage.tsx` (`/`) é o ponto de entrada, com 3 cards (Configuração de Subestações,
+Manobras, Histórico — os dois últimos apontam pra `/manobras` por ora, ver FRENTE 0 abaixo).
+Editor de topologia completo com 12 tipos de nó (`frontend/src/nodes/`: Barra unificada, DJ, CH,
+TF, TF3, Religador, TP, TC, Linha, Jumper, Chave Provisória, mais o `EquipmentNodeShell`
+compartilhado), ferramenta de wire estilo LTSpice, rotação (Ctrl+R), propagação de cor só a
+partir de barras `fonte: true` (BFS unidirecional AT→BT através de TF, ver FRENTE 1), painel de
+manobra (cabeçalho, passos, histórico) e página de histórico com filtros/clone.
 
-**Testes**: 20 testes unitários no backend (`pytest`, lock service + schemas). Frontend
-validado manualmente via Playwright (sem suíte automatizada ainda — é item aberto da FASE 10).
+`Canvas.tsx`/`Toolbar.tsx`/`WirePreview.tsx`/`useEditorShortcuts.ts` não importam mais uma store
+específica — recebem os bindings de topologia (nós, arestas, wire tool, rotação) via prop
+(`stores/topologyBindings.ts`), o que permite reuso tanto pelo cadastro de SE (`editorStore`)
+quanto pela sessão de manobra (`sessionStore`, ver FRENTE 2).
 
-## Incorporação de elementos provisórios permanentes (2026-07-27, não commitada)
+**Testes**: 22 testes unitários no backend (`pytest`, lock service + schemas). Frontend
+validado manualmente via Playwright a cada frente (sem suíte automatizada ainda — item aberto
+da FASE 10).
 
-Fecha o item pendente da FASE 5. `handleFinalizeManeuver` em `SubstationEditorPage.tsx` agora
-filtra a topologia antes de persistir: `utils/provisionalElements.ts` (`incorporatePermanentProvisionals`)
-remove os nós `jumper`/`chave_provisoria` com `data.permanente === false` (e as edges que
-ficariam penduradas neles) — o que sobra (equipamento normal + provisórios `permanente: true`)
-é salvo via `PUT /substations/{id}` **antes** de chamar `POST /maneuvers/{id}/finalize`; se o
-PUT falhar, a manobra não é finalizada (evita marcar como finalizada uma manobra cuja topologia
-não foi persistida). Cobre só a SE principal — a secundária (`secondaryIds`) é somente
-leitura/toggle nesta tela (FASE 6) e não tem como ganhar um provisório novo por aqui, já que a
-`Toolbar` (onde se arrasta um jumper/chave provisória) só aparece em modo CONFIGURAÇÃO, que edita
-exclusivamente a SE principal. Elementos temporários continuam visíveis no canvas local até a
-página recarregar (não é removido do estado do React Flow, só não é persistido).
+## Refatoração de `docs/refatorar_manobras.md` (2026-07-27)
+
+### FRENTE 0 — Home e navegação
+Nova `HomePage.tsx` em `/`; a lista de SEs (antiga home) virou `/substations`. Os cards
+"Manobras" e "Histórico" apontam pro mesmo `/manobras` por enquanto — só existe uma página de
+manobras hoje (a de histórico, filtrada a `FINALIZADA`); vão divergir quando/se `/manobras`
+ganhar uma listagem de rascunhos separada.
+
+### FRENTE 1 — Bugfix propagação de cor
+`utils/energization.ts`: o BFS agora só semeia a partir de barras com `data.fonte === true`
+(antes, qualquer barra não-transferência virava fonte). TF/TF3 passaram a ser unidirecionais
+(AT→BT) por padrão — novo campo `data.propagacaoReversa` (checkbox no modal de propriedades)
+libera os dois sentidos só naquele transformador específico.
+
+### FRENTE 2 — Sessão de manobra efêmera (a maior mudança)
+Gravação de manobra **saiu** do editor de SE (que agora só cuida de cadastro/topologia
+persistida, com lock+autosave como antes) e virou uma sessão separada, `ManeuverSessionPage.tsx`
+(`/manobras/nova`, acessível pelo botão "Nova Sessão de Manobra" em `/manobras`):
+- Fase 1: seleção multi-SE (checklist).
+- Fase 2: canvas combinado — `sessionStore.ts` importa a topologia de cada SE selecionada como
+  camada **read-only** (reposicionável/rotacionável, mas sem modal de propriedades nem remoção)
+  e permite adicionar jumper/chave provisória e wires entre SEs como camada de sessão, **efêmera**.
+  `PUT /substations/{id}` **nunca** é chamado neste fluxo — reimportar é sempre a partir do
+  estado atual do banco.
+- Modo MONTAGEM → GRAVANDO (clique em DJ/CH/Religador gera passo, prefixado `[SIGLA]` quando
+  2+ SEs) → FINALIZADA (painel read-only, `POST /maneuvers/{id}/finalize`).
+- **Reverte a feature de incorporação de provisório permanente da FASE 5** (decisão consciente,
+  não um esquecimento): como a sessão nunca persiste topologia, um jumper/chave "permanente" não
+  tem mais como ser incorporado à SE base. `utils/provisionalElements.ts` foi deletado e o campo
+  `permanente` saiu de `JumperData`/`ChaveProvisoriaData` e do modal — elementos provisórios na
+  sessão são sempre temporários, sem exceção.
+
+### FRENTE 3c — Remove `ManeuverStepOrigin`
+O enum `origin` (`SIMULADOR`/`MANUAL`) foi removido por completo (model, schema, migration
+`9fef7d796fa0`, frontend) — já era redundante com `action == null` significando "passo manual"
+desde a refatoração anterior (badge de origem já não aparecia na UI).
+
+### FRENTE 4c — Voltar à Gravação
+Só existe dentro da fase FINALIZADA do `ManeuverSessionPage` (é a única tela com o canvas efêmero
+ainda vivo — `ManeuverEditPage` não tem canvas, ver FRENTE 4b). Botão abre modal com 2 opções:
+- **Reiniciar topologia**: limpa passos, reseta a session store, reimporta as mesmas SEs do zero.
+- **Nova gravação (sobrepor)**: mantém o canvas atual, limpa só os passos, vai direto pra
+  GRAVANDO.
+
+Sem versionamento de manobra: as duas opções reaproveitam o mesmo `maneuver_id` (só substituem os
+passos in-place). Novo endpoint `POST /maneuvers/{id}/reopen` (`maneuver_service.reopen`) permite
+reabrir uma manobra já FINALIZADA de volta pra RASCUNHO — sem isso, os passos antigos não
+poderiam ser apagados nem novos inseridos (`assert_editable` bloqueia mutação em manobra
+finalizada).
+
+### FRENTE 5 — Template do PDF
+Número e coluna de responsabilidade já apareciam (herdado da refatoração anterior). O espaçamento
+entre a coluna responsabilidade/badge de ação e a descrição do passo dependia de `gap` do
+flexbox, que o WeasyPrint usado aqui não aplica de forma confiável (sobretudo ao redor do
+`::before` do contador numérico) — trocado por `margin`/`padding` explícitos, com uma coluna
+`.meta` de largura fixa e borda divisória.
 
 ## Refatoração de edição de manobra (2026-07-27, commit `7972f95`)
 
@@ -59,8 +110,9 @@ página recarregar (não é removido do estado do React Flow, só não é persis
 - **Responsabilidade por passo**: nova coluna `ManeuverStep.responsibility`
   (`LOCAL`/`CENTRO`, default `CENTRO`), editável via dropdown na tela de edição.
 - **Badge "manual" removido**: um passo sem `action` (null) simplesmente não mostra badge de
-  ação — o badge de origem (`MANUAL`) foi tirado da UI (`StepBadges.tsx`) e do PDF; o campo
-  `origin` continua existindo no modelo (só não é mais exibido).
+  ação — o badge de origem (`MANUAL`) foi tirado da UI (`StepBadges.tsx`) e do PDF. O campo
+  `origin` em si foi removido por completo do model/schema numa sessão posterior (FRENTE 3c,
+  ver acima) — na época deste commit original ele só tinha parado de aparecer na UI.
 - **PDF inline**: `GET /maneuvers/{id}/pdf` devolve `Content-Disposition: inline` (via
   `FileResponse(..., content_disposition_type="inline")`) em vez de `attachment` — nova rota de
   frontend `/manobras/:id/pdf` embute isso num `<iframe>` em tela cheia.
@@ -109,12 +161,16 @@ página recarregar (não é removido do estado do React Flow, só não é persis
   (as versões antigas `BarraPrincipalNode`/`BarraTransferenciaNode`/`BarraDuplaNode` foram
   unificadas e não existem mais).
 - Orientação padrão: barra vertical, DJ/CH/Religador/TF horizontais — tudo rotacionável com
-  Ctrl+R. Wires são ortogonais (`type: "step"`) e herdam cor da barra fonte, com propagação
-  dinâmica (BFS a partir de barras `fonte: true`) só no modo GRAVANDO.
+  Ctrl+R. Wires são ortogonais (`type: "step"`) e herdam cor da barra fonte, com propagação BFS
+  só a partir de barras `fonte: true` — TF/TF3 são unidirecionais (AT→BT) a menos que
+  `data.propagacaoReversa` esteja marcado naquele transformador específico (FRENTE 1).
 - Lock de edição: liberado em `beforeunload` (via `fetch keepalive`) e ao navegar para fora da
-  página; timeout automático de 30min no backend.
+  página; timeout automático de 30min no backend. Só existe pro cadastro de SE — a sessão de
+  manobra (FRENTE 2) não trava nenhuma SE, já que nunca escreve nelas.
 - `ManeuverRead.header.substations` é derivado da relação `ManeuverSubstation` real (não do
   texto livre do formulário) — bug corrigido durante a FASE 9.
+- Gravação de manobra não vive mais no editor de SE — é sempre uma sessão efêmera separada
+  (`/manobras/nova`, FRENTE 2), que nunca persiste topologia de volta em `/substations`.
 
 ## Estrutura de pastas
 

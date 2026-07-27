@@ -20,12 +20,11 @@ export function JumperNode({ id, data, selected }: NodeProps<JumperNodeType>) {
       baseHeight={24}
       label={
         <span
-          title={data.permanente ? `${data.label} (permanente)` : data.label}
+          title={data.label}
           className="absolute max-w-20 break-words rounded bg-white/85 px-0.5 text-center text-[9px] font-medium leading-tight text-amber-700"
           style={getEquipmentLabelPosition(rotation)}
         >
           {data.label}
-          {data.permanente ? " (P)" : ""}
         </span>
       }
     >

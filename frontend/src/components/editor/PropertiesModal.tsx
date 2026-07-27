@@ -57,7 +57,9 @@ export function PropertiesModal({
   const [destinoSeId, setDestinoSeId] = useState((initialData?.destino_se_id as string) ?? "");
   const [barraTipo, setBarraTipo] = useState<BarraTipo>((initialData?.tipo as BarraTipo) ?? "principal");
   const [fonte, setFonte] = useState((initialData?.fonte as boolean) ?? false);
-  const [permanente, setPermanente] = useState((initialData?.permanente as boolean) ?? false);
+  const [propagacaoReversa, setPropagacaoReversa] = useState(
+    (initialData?.propagacaoReversa as boolean) ?? false
+  );
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -92,6 +94,7 @@ export function PropertiesModal({
           tensao_at: tensaoAt,
           tensao_bt: tensaoBt,
           potencia_mva: potenciaMva ? Number(potenciaMva) : undefined,
+          propagacaoReversa,
         },
       });
       return;
@@ -107,6 +110,7 @@ export function PropertiesModal({
           tensao_bt: tensaoBt,
           tensao_ter: tensaoTer,
           potencia_mva: potenciaMva ? Number(potenciaMva) : undefined,
+          propagacaoReversa,
         },
       });
       return;
@@ -126,12 +130,12 @@ export function PropertiesModal({
     }
     if (kind === "jumper") {
       const label = nome ? `Jumper ${nome}` : "Jumper";
-      onSubmit({ label, data: { label, nome, permanente } });
+      onSubmit({ label, data: { label, nome } });
       return;
     }
     if (kind === "chave_provisoria") {
       const label = nome ? `CH Prov. ${nome}` : "CH Provisória";
-      onSubmit({ label, data: { label, nome, estado, permanente } });
+      onSubmit({ label, data: { label, nome, estado } });
     }
   }
 
@@ -209,13 +213,6 @@ export function PropertiesModal({
               <option value="aberto">Aberto</option>
               <option value="fechado">Fechado</option>
             </select>
-          </label>
-        )}
-
-        {(kind === "jumper" || kind === "chave_provisoria") && (
-          <label className="mb-3 flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={permanente} onChange={(e) => setPermanente(e.target.checked)} />
-            Permanente (incorporado à topologia base ao finalizar a manobra)
           </label>
         )}
 
@@ -301,6 +298,14 @@ export function PropertiesModal({
                 onChange={(e) => setPotenciaMva(e.target.value)}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
+            </label>
+            <label className="mb-3 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={propagacaoReversa}
+                onChange={(e) => setPropagacaoReversa(e.target.checked)}
+              />
+              Permitir propagação reversa (BT → AT)
             </label>
           </>
         )}

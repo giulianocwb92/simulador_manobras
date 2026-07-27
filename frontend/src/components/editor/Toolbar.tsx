@@ -1,6 +1,5 @@
 import type { DragEvent } from "react";
-import { useEditorStore } from "../../stores/editorStore";
-import type { EquipmentKind } from "../../types/topology";
+import type { TopologyNode, EquipmentKind } from "../../types/topology";
 
 interface ComponentItem {
   kind: EquipmentKind;
@@ -43,12 +42,23 @@ const SECTIONS: { title: string; items: ComponentItem[] }[] = [
   },
 ];
 
-export function Toolbar() {
-  const nodes = useEditorStore((s) => s.nodes);
-  const rotateSelectedNodes = useEditorStore((s) => s.rotateSelectedNodes);
-  const wireMode = useEditorStore((s) => s.wireMode);
-  const setWireMode = useEditorStore((s) => s.setWireMode);
+interface ToolbarProps {
+  nodes: TopologyNode[];
+  rotateSelectedNodes: () => void;
+  wireMode: boolean;
+  setWireMode: (active: boolean) => void;
+  /** Restringe os componentes arrastáveis (ex.: sessão de manobra só permite
+   *  elementos provisórios) — undefined mostra tudo, como no cadastro de SE. */
+  allowedKinds?: ReadonlySet<EquipmentKind>;
+}
+
+export function Toolbar({ nodes, rotateSelectedNodes, wireMode, setWireMode, allowedKinds }: ToolbarProps) {
   const hasSelection = nodes.some((n) => n.selected);
+  const sections = allowedKinds
+    ? SECTIONS.map((section) => ({ ...section, items: section.items.filter((item) => allowedKinds.has(item.kind)) })).filter(
+        (section) => section.items.length > 0
+      )
+    : SECTIONS;
 
   function handleDragStart(event: DragEvent, kind: EquipmentKind) {
     event.dataTransfer.setData("application/x-equipment-kind", kind);
@@ -80,7 +90,7 @@ export function Toolbar() {
         <span className="w-5 text-center">↻</span>
         Rotacionar
       </button>
-      {SECTIONS.map((section) => (
+      {sections.map((section) => (
         <div key={section.title}>
           <h3 className="border-b border-slate-100 bg-slate-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
             {section.title}

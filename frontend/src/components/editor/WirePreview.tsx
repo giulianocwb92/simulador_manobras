@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useReactFlow } from "@xyflow/react";
-import { useEditorStore } from "../../stores/editorStore";
+import type { WirePending } from "../../stores/topologyBindings";
 
 /** Linha ortogonal (estilo LTSpice) que segue o cursor enquanto um wire está sendo desenhado. */
-export function WirePreview() {
-  const wirePending = useEditorStore((s) => s.wirePending);
+export function WirePreview({ wirePending }: { wirePending: WirePending | null }) {
   const { flowToScreenPosition } = useReactFlow();
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
 

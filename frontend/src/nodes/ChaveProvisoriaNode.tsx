@@ -19,12 +19,11 @@ export function ChaveProvisoriaNode({ id, data, selected }: NodeProps<ChaveProvi
       baseHeight={24}
       label={
         <span
-          title={data.permanente ? `${data.label} (permanente)` : data.label}
+          title={data.label}
           className="absolute whitespace-nowrap text-[9px] font-medium text-amber-700"
           style={getEquipmentLabelPosition(rotation)}
         >
           {data.label}
-          {data.permanente ? " (P)" : ""}
         </span>
       }
     >

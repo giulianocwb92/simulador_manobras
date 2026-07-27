@@ -43,6 +43,14 @@ export function computeVoltageMap(
     adjacency.get(b)!.push(a);
   };
 
+  // Liga unidirecionalmente (from → to); usado pelo TF/TF3 pra impedir que a
+  // cor flua BT → AT por padrão (ver directedLink abaixo).
+  const linkDirected = (from: string, to: string) => {
+    if (!adjacency.has(from)) adjacency.set(from, []);
+    if (!adjacency.has(to)) adjacency.set(to, []);
+    adjacency.get(from)!.push(to);
+  };
+
   // Ligações internas de cada equipamento (o que conduz para o quê dentro do próprio nó).
   for (const node of nodes) {
     switch (node.type) {
@@ -55,14 +63,28 @@ export function computeVoltageMap(
         }
         break;
       }
-      case "transformador":
-        link(portKey(node.id, "terminal-a"), portKey(node.id, "terminal-b"));
+      case "transformador": {
+        // Por padrão a cor só flui AT → BT (o TF não propaga de volta pro lado
+        // de alta) — "Permitir propagação reversa (BT → AT)" no modal libera
+        // os dois sentidos só para este transformador específico.
+        const a = portKey(node.id, "terminal-a");
+        const b = portKey(node.id, "terminal-b");
+        linkDirected(a, b);
+        if (node.data.propagacaoReversa) linkDirected(b, a);
         break;
-      case "tf3":
-        link(portKey(node.id, "terminal-a"), portKey(node.id, "terminal-b"));
-        link(portKey(node.id, "terminal-a"), portKey(node.id, "terminal-ter"));
-        link(portKey(node.id, "terminal-b"), portKey(node.id, "terminal-ter"));
+      }
+      case "tf3": {
+        const a = portKey(node.id, "terminal-a");
+        const b = portKey(node.id, "terminal-b");
+        const ter = portKey(node.id, "terminal-ter");
+        linkDirected(a, b);
+        linkDirected(a, ter);
+        if (node.data.propagacaoReversa) {
+          linkDirected(b, a);
+          linkDirected(ter, a);
+        }
         break;
+      }
       case "disjuntor":
       case "chave":
       case "religador":
@@ -91,6 +113,9 @@ export function computeVoltageMap(
 
   for (const node of nodes) {
     if (node.type !== "barra") continue;
+    // Só barras com `fonte: true` semeiam o BFS — nenhuma barra colore por
+    // padrão, mesmo de baixa tensão (ver domain-model/editor-topology, Correção FRENTE 1).
+    if (!node.data.fonte) continue;
     if (node.data.tipo === "transferencia" && !seedTransferBarras) continue;
     for (const handle of node.data.handles ?? []) {
       const key = portKey(node.id, handle.id);

@@ -1,13 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.enums import ManeuverAction, ManeuverStepOrigin
+from app.models.enums import ManeuverAction
 from app.schemas.maneuver import ManeuverCreate, ManeuverHeader, ManeuverStepCreate
 
 
-def test_maneuver_step_create_origem_padrao_e_manual():
+def test_maneuver_step_create_sem_acao_e_passo_manual():
     step = ManeuverStepCreate(description="Confirmar ausência de carga no alimentador")
-    assert step.origin == ManeuverStepOrigin.MANUAL
     assert step.action is None
 
 
@@ -16,7 +15,6 @@ def test_maneuver_step_create_aceita_passo_gerado_pelo_simulador():
         description="Abrir DJ 52-01 — verificar indicação de aberto no painel",
         equipment_id="dj-01",
         action=ManeuverAction.ABRIR,
-        origin=ManeuverStepOrigin.SIMULADOR,
     )
     assert step.action == ManeuverAction.ABRIR
 
