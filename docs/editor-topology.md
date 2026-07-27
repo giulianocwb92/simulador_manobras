@@ -1,5 +1,10 @@
 # Editor de Topologia
 
+> Este documento é a spec original do editor. Vários detalhes abaixo foram revisados
+> durante a implementação (grid, orientação padrão, wire ortogonal, barra unificada,
+> propagação de cor) — as seções afetadas têm uma nota "Atualizado". Para o estado
+> consolidado ver `docs/status.md`; para o histórico de cada mudança, `git log`.
+
 ## Biblioteca: React Flow
 
 React Flow é a escolha para o canvas. Motivos:
@@ -11,11 +16,15 @@ React Flow é a escolha para o canvas. Motivos:
 
 ## Grid snap
 
+> **Atualizado**: a grade final é de **6px**, não 20px. 10px foi tentado e descartado —
+> não divide os 12px de offset do terminal vertical dos componentes de 24px, o que
+> deixava cotovelos residuais nos wires (ver `frontend/src/utils/barraLayout.ts`).
+
 ```typescript
 // Em ReactFlow component
 <ReactFlow
   snapToGrid={true}
-  snapGrid={[20, 20]}   // grade de 20px
+  snapGrid={[6, 6]}   // grade de 6px
   ...
 />
 ```
@@ -25,62 +34,43 @@ React Flow é a escolha para o canvas. Motivos:
 Cada tipo de equipamento é um componente React registrado em `nodes/`.
 
 ### BarraNode
+
+> **Atualizado**: `BarraPrincipalNode`/`BarraTransferenciaNode`/`BarraDuplaNode` foram
+> unificados num único `BarraNode`, parametrizado por `data.tipo: 'principal' |
+> 'transferencia' | 'dupla'` (espessura e cor variam por tipo) e `data.fonte: boolean`
+> (barra que inicia a propagação de cor no modo GRAVANDO — ver seção própria abaixo).
+> Orientação padrão é **vertical**, rotacionável com Ctrl+R. Handles não são mais criados
+> automaticamente por conexão: com a ferramenta Wire ativa (tecla `W`), o usuário clica num
+> ponto da barra e um handle é criado ali (`data.handles: {id, position: 0.0–1.0}[]`).
+
 ```
 ┌─────────────────────────────────┐
 │         BARRA 138 kV            │
-│  ●  ●  ●  ●  ●  ●  ●  ●  ●   │  ← handles dinâmicos (N conexões)
+│  ●  ●  ●  ●  ●  ●  ●  ●  ●   │  ← handles dinâmicos (criados via ferramenta Wire)
 └─────────────────────────────────┘
 ```
-- Handles criados dinamicamente conforme equipamentos conectados
-- Orientação horizontal, fluxo de cima para baixo
-- Cor por nível de tensão (ver tabela abaixo)
+- Cor por nível de tensão (ver tabela abaixo), exceto barra `transferencia` sem cor
+  propagada (cinza `#94a3b8` por padrão)
 
-### DJNode (Disjuntor)
-```
-    ● terminal-a (top)
-    │
-   [52]   ← símbolo: quadrado com X quando aberto
-    │
-    ● terminal-b (bottom)
-```
-- 2 handles fixos: `terminal-a` (top) e `terminal-b` (bottom)
-- Estado visual: fechado = linha contínua / aberto = X no símbolo
-- Label: `DJ 52-01`
+### DJNode (Disjuntor), CHNode (Chave), ReligadorNode, TFNode, TF3Node
 
-### CHNode (Chave Seccionadora)
-```
-    ● terminal-a (top)
-    │
-   [/]   ← símbolo: linha diagonal quando aberta
-    │
-    ● terminal-b (bottom)
-```
-- 2 handles fixos: `terminal-a` (top) e `terminal-b` (bottom)
-- Estado visual: fechado = linha reta / aberto = linha inclinada
-- Label: `CH 29-01`
+> **Atualizado**: orientação padrão é **horizontal** (terminal-a à esquerda, terminal-b à
+> direita), rotacionável em 90° com Ctrl+R — os diagramas abaixo (handles top/bottom)
+> refletem a spec original, já superada. Todos compartilham o wrapper
+> `frontend/src/nodes/EquipmentNodeShell.tsx`. `TF3Node` (3 enrolamentos) existe como nó
+> separado do `TFNode` (2 enrolamentos), com terminal terciário adicional.
 
-### TFNode (Transformador)
 ```
-    ● terminal-at (top) — lado AT
+    ● terminal-a (left)
     │
-   (○○)  ← símbolo: dois círculos sobrepostos
-    │
-    ● terminal-bt (bottom) — lado BT
-    │
-    ● terminal-ter (bottom-right) — terciário (opcional)
+   [52]───   ← símbolo: quadrado, verde=fechado / vermelho=aberto (DJ/Religador),
+    │           lâmina diagonal ou contatos (CH)
+    ● terminal-b (right)
 ```
-- 2 handles obrigatórios + 1 opcional (terciário)
-- Dados: `tensao_at`, `tensao_bt`, `tensao_ter?`, `potencia_mva`
-- Label: `TF-01` ou `TF-A`
-
-### ReligadorNode
-```
-    ● terminal-a (top)
-    │
-   [R]   ← símbolo: retângulo com R
-    │
-    ● terminal-b (bottom)
-```
+- 2 handles: `terminal-a`, `terminal-b` (mais `terminal-ter` no TF3Node, terciário)
+- DJ/CH/Religador: estado visual **fechado = vermelho, aberto = verde** (nota: invertido
+  em relação à primeira versão da spec — ver `docs/status.md`)
+- Labels: `DJ 52-01`, `CH 29-01`, nome livre do religador, `TF-01`/`TF-A`
 
 ### TPNode / TCNode
 ```
@@ -134,18 +124,38 @@ const onConnect = (connection: Connection) => {
 };
 ```
 
+## Ferramenta Wire e propagação de cor (adicionado após a spec original)
+
+- **Ferramenta Wire** (tecla `W` ou botão na toolbar, estilo LTSpice): ativa modo
+  crosshair, clique-clique para criar uma edge; `Esc`/`Del` cancela. Edges são
+  ortogonais (`type: "step"` do React Flow), com `sourcePosition`/`targetPosition`
+  calculados a partir da rotação do nó (`frontend/src/utils/edgePositions.ts`) para evitar
+  cotovelos errados quando um componente está rotacionado.
+- **Propagação de cor** (`frontend/src/utils/colorPropagation.ts`): só no modo GRAVANDO.
+  BFS a partir de cada barra com `fonte: true`, propagando `VOLTAGE_COLORS[tensao]` pelos
+  wires enquanto DJ/CH/Religador no caminho estiverem fechados; interrompe (wire cinza
+  `#94a3b8`) ao encontrar um aberto. Recalculado só quando um desses equipamentos muda de
+  estado. No modo CONFIGURAÇÃO não há propagação — cada barra/wire mostra a cor estática
+  da própria tensão.
+- Cores centralizadas em `frontend/src/constants/voltageColors.ts` — qualquer código novo
+  deve importar dali, nunca hardcodar hex de tensão.
+
 ## Toolbar de componentes
 
 Painel lateral esquerdo com os blocos arrastáveis:
 
 ```
 ┌──────────────┐
+│  W  Wire     │  ← toggle, ativa modo crosshair
+│  ↻  Rotacionar│  ← ativo só com nó selecionado
+├──────────────┤
 │  COMPONENTES │
 ├──────────────┤
-│ ▬ Barra      │
+│ ▬ Barra      │  ← modal: tipo/fonte/tensão/nome
 │ ⊠ Disjuntor  │
 │ ∕ Chave      │
 │ ◎ Transform. │
+│ ◉ TF 3 Enrol.│
 │ ® Religador  │
 │ T TP / TC    │
 │ → Linha      │
@@ -209,7 +219,8 @@ Modal exibido ao arrastar componente para o canvas:
 
 ## Salvamento da topologia
 
-- Auto-save a cada 30s enquanto em CONFIGURAÇÃO (PATCH na API)
+- Auto-save a cada 30s enquanto em CONFIGURAÇÃO (`PUT /substations/{id}` — `api-contracts.md`
+  não define um PATCH dedicado como uma versão anterior deste documento sugeria)
 - Salvar manual: botão "Salvar Subestação"
 - Ao salvar, versão anterior é preservada em `substation_versions`
 - Lock liberado automaticamente ao sair da página ou após 30min de inatividade
