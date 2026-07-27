@@ -23,7 +23,7 @@ a descrição textual de cada passo e exportar o resultado final em PDF.
 - [x] FASE 2 — Backend: fundação (models, Alembic, schemas, lock de edição, routers `users`/`substations`/`maneuvers`)
 - [x] FASE 3 — Frontend: estrutura base (React Query, Zustand, Tailwind, página inicial)
 - [x] FASE 4 — Editor de topologia (React Flow, drag-and-drop, validação de conexão, lock visual, auto-save)
-- [x] FASE 5 — Elementos provisórios (Jumper, Chave provisória — falta incorporar à topologia base ao finalizar a manobra)
+- [x] FASE 5 — Elementos provisórios (Jumper, Chave provisória, incorporados à topologia base ao finalizar a manobra quando marcados como permanentes)
 - [x] FASE 6 — Simulação de manobra (gravação de passos com geração automática de texto, painel em tempo real, suporte a uma 2ª subestação no mesmo canvas)
 - [x] FASE 7 — Edição da manobra (cabeçalho, editar/reordenar/deletar passos, passo manual, finalizar — tudo persistido via API)
 - [x] FASE 8 — Geração de PDF (template **provisório** — aguardando o modelo oficial; botão "Baixar PDF")

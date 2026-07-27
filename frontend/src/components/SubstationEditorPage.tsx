@@ -15,6 +15,7 @@ import { LockBanner } from "./editor/LockBanner";
 import { PropertiesModal, type PropertiesModalSubmitPayload } from "./editor/PropertiesModal";
 import { StepsPanel } from "./maneuver/StepsPanel";
 import { generateStepDescription, TOGGLEABLE_KINDS } from "../utils/maneuverStepText";
+import { incorporatePermanentProvisionals } from "../utils/provisionalElements";
 import { maneuversService } from "../services/maneuvers";
 import type { EquipmentKind, EquipmentState, TopologyNode } from "../types/topology";
 import type { ManeuverAction } from "../types/maneuver";
@@ -275,9 +276,24 @@ export function SubstationEditorPage() {
     setMode("FINALIZADA");
   }
 
+  // Ver docs/domain-model.md "Elementos provisórios": jumper/chave provisória
+  // com `permanente: true` passam a fazer parte da topologia base da SE ao
+  // finalizar; os temporários nunca são persistidos. Só cobre a SE principal —
+  // a secundária (ver secondaryIds) é só leitura/toggle nesta tela, não tem
+  // como ganhar um provisório novo por aqui (Toolbar só aparece em CONFIGURAÇÃO,
+  // que edita exclusivamente a SE principal).
   async function handleFinalizeManeuver() {
-    if (!maneuverId) return;
+    if (!maneuverId || !id || !currentUser) return;
     try {
+      const ownNodes = nodes.filter((n) => !secondaryIds.has(n.id));
+      const ownEdges = edges.filter((e) => !secondaryIds.has(e.id));
+      const incorporated = incorporatePermanentProvisionals(ownNodes, ownEdges);
+      const updatedSubstation = await substationsService.updateTopology(
+        id,
+        currentUser.id,
+        storeToTopology(incorporated.nodes, incorporated.edges)
+      );
+      queryClient.setQueryData<Substation>(["substations", id], updatedSubstation);
       const finalized = await maneuversService.finalize(maneuverId);
       setManeuverStatus(finalized.status);
     } catch {

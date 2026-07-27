@@ -1,19 +1,19 @@
 # Estado atual do projeto
 
-> Última atualização: 2026-07-27. `origin/main` está em `4cc4a6d`; a working tree tem, além da
-> limpeza de `docs/` já registrada abaixo, uma refatoração grande (edição de manobra + preview de
-> PDF + numeração automática) implementada e testada nesta sessão, **ainda não commitada**
-> ("nunca commite — só implemente e reporte" foi pedido explicitamente).
+> Última atualização: 2026-07-27. `origin/main` está em `7972f95` (inclui a refatoração de
+> edição de manobra + preview de PDF + numeração automática descrita abaixo, já commitada e
+> enviada). A working tree tem, além disso, a incorporação de elementos provisórios permanentes
+> (fecha o último item pendente da FASE 5) implementada e testada nesta sessão, **ainda não
+> commitada** ("nunca commite — só implemente e reporte" segue valendo até pedido em contrário).
 > Este documento é um retrato do progresso — para o checklist vivo, ver `docs/implementation-plan.md`.
 
 ## Resumo
 
-FASES 1 a 9 do `implementation-plan.md` estão completas e commitadas em `origin/main`. Falta a
-FASE 10 (polimento e entrega) e um item pendente da FASE 5 (incorporar elementos provisórios
-permanentes à topologia base ao finalizar a manobra). Além disso, há uma refatoração ad-hoc
-grande do fluxo de manobra (numeração automática, responsabilidade LOCAL/CENTRO por passo,
-preview de PDF inline, tela dedicada de edição) implementada e testada, mas **não commitada** —
-ver seção própria abaixo.
+FASES 1 a 9 do `implementation-plan.md` estão completas — a FASE 5 acaba de fechar (item
+pendente de incorporação de provisórios permanentes, ver seção própria). Falta só a FASE 10
+(polimento e entrega). Commitada e em `origin/main` também está uma refatoração ad-hoc grande do
+fluxo de manobra (numeração automática, responsabilidade LOCAL/CENTRO por passo, preview de PDF
+inline, tela dedicada de edição).
 
 ## O que existe e funciona
 
@@ -33,11 +33,21 @@ painel de manobra (cabeçalho, passos, histórico) e página de histórico com f
 **Testes**: 20 testes unitários no backend (`pytest`, lock service + schemas). Frontend
 validado manualmente via Playwright (sem suíte automatizada ainda — é item aberto da FASE 10).
 
-## Refatoração de edição de manobra (2026-07-27, não commitada)
+## Incorporação de elementos provisórios permanentes (2026-07-27, não commitada)
 
-Implementada e testada via Docker + Playwright headless, mas deixada **sem commit** — pedido
-explícito da spec desta tarefa. `git status` mostra tudo modificado/novo/deletado na working
-tree; nada foi staged/commitado.
+Fecha o item pendente da FASE 5. `handleFinalizeManeuver` em `SubstationEditorPage.tsx` agora
+filtra a topologia antes de persistir: `utils/provisionalElements.ts` (`incorporatePermanentProvisionals`)
+remove os nós `jumper`/`chave_provisoria` com `data.permanente === false` (e as edges que
+ficariam penduradas neles) — o que sobra (equipamento normal + provisórios `permanente: true`)
+é salvo via `PUT /substations/{id}` **antes** de chamar `POST /maneuvers/{id}/finalize`; se o
+PUT falhar, a manobra não é finalizada (evita marcar como finalizada uma manobra cuja topologia
+não foi persistida). Cobre só a SE principal — a secundária (`secondaryIds`) é somente
+leitura/toggle nesta tela (FASE 6) e não tem como ganhar um provisório novo por aqui, já que a
+`Toolbar` (onde se arrasta um jumper/chave provisória) só aparece em modo CONFIGURAÇÃO, que edita
+exclusivamente a SE principal. Elementos temporários continuam visíveis no canvas local até a
+página recarregar (não é removido do estado do React Flow, só não é persistido).
+
+## Refatoração de edição de manobra (2026-07-27, commit `7972f95`)
 
 - **Número automático**: nova coluna `Maneuver.number` (`"0001/2026"`, zero-padded + ano
   corrente), atribuída em `maneuver_service.assign_number` no primeiro `PUT /maneuvers/{id}`
@@ -80,8 +90,6 @@ tree; nada foi staged/commitado.
 
 ## Pendências conhecidas
 
-- **FASE 5** (elementos provisórios): falta o handler de `POST /maneuvers/{id}/finalize`
-  filtrar nós `permanente: true` e persistir na(s) SE(s) via `PUT /substations/{id}`.
 - **FASE 10** (polimento): tratamento de erros global (toasts), loading states, responsividade
   básica, README de instalação (parcialmente já existe), `.env.example` documentado, teste de
   fluxo completo ponta a ponta.
@@ -116,5 +124,4 @@ Ver `CLAUDE.md` para a árvore completa. Sem mudanças estruturais relevantes de
 
 ## Próximo passo natural
 
-FASE 10 (polimento e entrega), ou fechar o item pendente da FASE 5 antes — nenhuma depende
-estritamente da outra. Ver `docs/implementation-plan.md` para o checklist detalhado.
+FASE 10 (polimento e entrega) — é a única fase que resta em aberto no `implementation-plan.md`.

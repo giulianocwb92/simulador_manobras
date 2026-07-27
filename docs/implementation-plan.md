@@ -68,10 +68,13 @@ Marque cada item com [x] ao concluir.
 - [x] Implementar `nodes/JumperNode.tsx`
 - [x] Implementar `nodes/ChaveProvisoriaNode.tsx` (nome corrigido de `ChaveProvisorialNode.tsx`)
 - [x] Modal ao adicionar: definir se é permanente ou temporário
-- [ ] Lógica: ao finalizar manobra, elementos permanentes são incorporados à topologia base
-      — o botão "Finalizar Manobra" já existe (FASE 7), mas só chama `POST
-      /maneuvers/{id}/finalize`; ainda falta, nesse handler, filtrar os nós com
-      `permanente: true` e persistir na(s) SE(s) envolvidas via `PUT /substations/{id}`
+- [x] Lógica: ao finalizar manobra, elementos permanentes são incorporados à topologia base
+      — `handleFinalizeManeuver` em `SubstationEditorPage.tsx` agora filtra os nós
+      provisórios (`utils/provisionalElements.ts`: remove os com `permanente: false` e as
+      edges que ficariam penduradas neles) e persiste via `PUT /substations/{id}` antes de
+      chamar `POST /maneuvers/{id}/finalize`; cobre só a SE principal — a secundária é
+      somente leitura/toggle nesta tela (ver FASE 6) e não tem como ganhar um provisório
+      novo por aqui
 
 ---
 
