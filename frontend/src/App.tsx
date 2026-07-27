@@ -4,6 +4,8 @@ import { SubstationsHomePage } from "./components/SubstationsHomePage";
 import { SubstationEditorPage } from "./components/SubstationEditorPage";
 import { ManeuverHistoryPage } from "./components/ManeuverHistoryPage";
 import { ManeuverDetailPage } from "./components/ManeuverDetailPage";
+import { ManeuverEditPage } from "./components/ManeuverEditPage";
+import { ManeuverPdfPage } from "./components/ManeuverPdfPage";
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
           <Route path="/substations/:id" element={<SubstationEditorPage />} />
           <Route path="/manobras" element={<ManeuverHistoryPage />} />
           <Route path="/manobras/:id" element={<ManeuverDetailPage />} />
+          <Route path="/manobras/:id/editar" element={<ManeuverEditPage />} />
+          <Route path="/manobras/:id/pdf" element={<ManeuverPdfPage />} />
         </Routes>
       </BrowserRouter>
     </IdentifyUserGate>

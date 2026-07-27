@@ -34,4 +34,4 @@ def test_maneuver_header_aceita_data_iso():
 def test_maneuver_create_usa_header_vazio_por_padrao():
     maneuver = ManeuverCreate(title="Desligamento TF-01 SE-CTB")
     assert maneuver.header.substations == []
-    assert maneuver.header.numero is None
+    assert maneuver.header.responsavel is None

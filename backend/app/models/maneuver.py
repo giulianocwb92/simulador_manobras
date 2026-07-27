@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-from app.models.enums import ManeuverAction, ManeuverStatus, ManeuverStepOrigin
+from app.models.enums import ManeuverAction, ManeuverStatus, ManeuverStepOrigin, ManeuverStepResponsibility
 
 
 class Maneuver(Base):
@@ -15,6 +15,11 @@ class Maneuver(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Número oficial da manobra, formato "0001/2026" — atribuído automaticamente
+    # (nunca reatribuído) no primeiro PUT que salva dados reais, ver
+    # maneuver_service.assign_number. `unique=True` permite múltiplos NULL
+    # (manobras ainda sem número) no Postgres.
+    number: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True)
     status: Mapped[ManeuverStatus] = mapped_column(
         Enum(ManeuverStatus, name="maneuver_status"), nullable=False, default=ManeuverStatus.RASCUNHO
     )
@@ -54,6 +59,12 @@ class ManeuverStep(Base):
     action: Mapped[ManeuverAction | None] = mapped_column(Enum(ManeuverAction, name="maneuver_action"), nullable=True)
     origin: Mapped[ManeuverStepOrigin] = mapped_column(
         Enum(ManeuverStepOrigin, name="maneuver_step_origin"), nullable=False
+    )
+    responsibility: Mapped[ManeuverStepResponsibility] = mapped_column(
+        Enum(ManeuverStepResponsibility, name="maneuver_step_responsibility"),
+        nullable=False,
+        default=ManeuverStepResponsibility.CENTRO,
+        server_default=ManeuverStepResponsibility.CENTRO.value,
     )
 
     maneuver: Mapped["Maneuver"] = relationship(back_populates="steps")

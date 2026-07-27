@@ -14,7 +14,6 @@ import { Toolbar } from "./editor/Toolbar";
 import { LockBanner } from "./editor/LockBanner";
 import { PropertiesModal, type PropertiesModalSubmitPayload } from "./editor/PropertiesModal";
 import { StepsPanel } from "./maneuver/StepsPanel";
-import { ManeuverHeaderForm } from "./maneuver/ManeuverHeaderForm";
 import { generateStepDescription, TOGGLEABLE_KINDS } from "../utils/maneuverStepText";
 import { maneuversService } from "../services/maneuvers";
 import type { EquipmentKind, EquipmentState, TopologyNode } from "../types/topology";
@@ -251,7 +250,7 @@ export function SubstationEditorPage() {
       }
     }
     const currentSteps = useManeuverStore.getState().steps;
-    addManeuverStep({ id: crypto.randomUUID(), order: currentSteps.length + 1, ...payload });
+    addManeuverStep({ id: crypto.randomUUID(), order: currentSteps.length + 1, responsibility: "CENTRO", ...payload });
   }
 
   async function handleStartRecording() {
@@ -359,14 +358,6 @@ export function SubstationEditorPage() {
             )}
             {mode === "FINALIZADA" && (
               <>
-                {maneuverId && (
-                  <a
-                    href={maneuversService.pdfUrl(maneuverId)}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Baixar PDF
-                  </a>
-                )}
                 {maneuverStatus === "FINALIZADA" ? (
                   <span className="text-xs font-medium text-slate-500">Manobra finalizada</span>
                 ) : (
@@ -429,7 +420,6 @@ export function SubstationEditorPage() {
         </div>
         {(mode === "GRAVANDO" || mode === "FINALIZADA") && (
           <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-white">
-            {mode === "FINALIZADA" && <ManeuverHeaderForm readOnly={maneuverStatus === "FINALIZADA"} />}
             <StepsPanel readOnly={mode === "GRAVANDO" || maneuverStatus === "FINALIZADA"} />
           </aside>
         )}

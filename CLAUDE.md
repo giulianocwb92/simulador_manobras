@@ -87,3 +87,4 @@ npm run typecheck
 - Contratos da API → @docs/api-contracts.md
 - Plano de implementação passo a passo → @docs/implementation-plan.md
 - Arquitetura geral → @docs/architecture.md
+- Estado atual do projeto (o que está pronto, pendências, divergências da spec original) → @docs/status.md

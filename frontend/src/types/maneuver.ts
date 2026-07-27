@@ -1,5 +1,6 @@
 export type ManeuverAction = "ABRIR" | "FECHAR";
 export type ManeuverStepOrigin = "SIMULADOR" | "MANUAL";
+export type ManeuverStepResponsibility = "LOCAL" | "CENTRO";
 export type ManeuverStatus = "RASCUNHO" | "FINALIZADA";
 
 export interface ManeuverStep {
@@ -9,10 +10,10 @@ export interface ManeuverStep {
   equipment_id: string | null;
   action: ManeuverAction | null;
   origin: ManeuverStepOrigin;
+  responsibility: ManeuverStepResponsibility;
 }
 
 export interface ManeuverHeader {
-  numero: string | null;
   data: string | null;
   responsavel: string | null;
   area: string | null;
@@ -23,6 +24,9 @@ export interface ManeuverHeader {
 export interface Maneuver {
   id: string;
   title: string;
+  /** Número oficial "0001/2026", atribuído automaticamente pelo backend no
+   *  primeiro PUT com dados reais — null até lá, nunca editável no frontend. */
+  number: string | null;
   status: ManeuverStatus;
   header: ManeuverHeader;
   /** Nomes reais das SEs vinculadas (via ManeuverSubstation no backend) —

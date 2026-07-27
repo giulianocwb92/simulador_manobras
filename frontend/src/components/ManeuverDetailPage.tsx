@@ -3,8 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { maneuversService } from "../services/maneuvers";
 import { StepBadges } from "./maneuver/StepBadges";
 
-const FIELD_LABELS: { key: "numero" | "data" | "responsavel" | "area"; label: string }[] = [
-  { key: "numero", label: "Número" },
+const FIELD_LABELS: { key: "data" | "responsavel" | "area"; label: string }[] = [
   { key: "data", label: "Data" },
   { key: "responsavel", label: "Responsável" },
   { key: "area", label: "Área" },
@@ -47,12 +46,22 @@ export function ManeuverDetailPage() {
       </div>
 
       <div className="mb-6 flex items-center gap-3">
-        <a
-          href={maneuversService.pdfUrl(maneuver.id)}
+        {maneuver.status !== "FINALIZADA" && (
+          <Link
+            to={`/manobras/${maneuver.id}/editar`}
+            className="rounded-md bg-slate-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Editar
+          </Link>
+        )}
+        <Link
+          to={`/manobras/${maneuver.id}/pdf`}
+          target="_blank"
+          rel="noreferrer"
           className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
         >
-          Baixar PDF
-        </a>
+          Visualizar PDF
+        </Link>
         <button
           type="button"
           onClick={() => cloneMutation.mutate()}
@@ -64,6 +73,10 @@ export function ManeuverDetailPage() {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 rounded-md border border-slate-200 p-4 sm:grid-cols-4">
+        <div>
+          <p className="text-xs font-medium text-slate-500">Número</p>
+          <p className="text-sm text-slate-900">{maneuver.number ?? "—"}</p>
+        </div>
         {FIELD_LABELS.map((field) => (
           <div key={field.key}>
             <p className="text-xs font-medium text-slate-500">{field.label}</p>

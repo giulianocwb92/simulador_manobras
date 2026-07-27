@@ -121,6 +121,8 @@ async def update_maneuver(
 ) -> Maneuver:
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
     with _reject_if_finalized():
+        if payload.header is not None or payload.title is not None or payload.status is not None:
+            await maneuver_service.assign_number(db, maneuver)
         if payload.header is not None:
             await maneuver_service.update_header(db, maneuver, payload.header)
         if payload.title is not None:
@@ -157,7 +159,7 @@ async def update_step(
     maneuver = await _get_maneuver_or_404(db, maneuver_id)
     step = _get_step_or_404(maneuver, step_id)
     with _reject_if_finalized():
-        return await maneuver_service.update_step(db, maneuver, step, payload.description)
+        return await maneuver_service.update_step(db, maneuver, step, payload.description, payload.responsibility)
 
 
 @router.delete("/{maneuver_id}/steps/{step_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -199,5 +201,10 @@ async def get_maneuver_pdf(maneuver_id: uuid.UUID, db: AsyncSession = Depends(ge
     # finalizada) — modelo de template PROVISÓRIO, ver maneuver_service.py.
     pdf_bytes = maneuver_service.render_pdf(maneuver, maneuver.substation_names)
     path = maneuver_service.save_pdf(maneuver.id, pdf_bytes)
-    filename = f"manobra-{maneuver.header.get('numero') or maneuver.id}.pdf"
-    return FileResponse(path, media_type="application/pdf", filename=filename)
+    # "/" no número (ex: "0001/2026") não é válido num nome de arquivo.
+    numero_arquivo = (maneuver.number or str(maneuver.id)).replace("/", "-")
+    filename = f"manobra-{numero_arquivo}.pdf"
+    # content_disposition_type="inline" (em vez do "attachment" default do
+    # FileResponse) permite renderizar direto num <iframe> no navegador, ver
+    # frontend/src/components/ManeuverPdfPage.tsx.
+    return FileResponse(path, media_type="application/pdf", filename=filename, content_disposition_type="inline")

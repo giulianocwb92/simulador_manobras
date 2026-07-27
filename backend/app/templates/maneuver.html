@@ -134,7 +134,13 @@
 
     .badge-abrir { background: #d1fae5; color: #065f46; }
     .badge-fechar { background: #fee2e2; color: #991b1b; }
-    .badge-manual { background: #e2e8f0; color: #475569; }
+
+    .responsabilidade {
+      flex-shrink: 0;
+      width: 46px;
+      font-weight: bold;
+      color: #475569;
+    }
 
     footer.rodape {
       margin-top: 24px;
@@ -184,11 +190,11 @@
       <ol class="lista-passos">
         {% for step in steps %}
           <li>
+            <span class="responsabilidade">{{ step.responsibility }}</span>
             <span>
               {{ step.description }}
               {% if step.action == "ABRIR" %}<span class="badge badge-abrir">ABRIR</span>{% endif %}
               {% if step.action == "FECHAR" %}<span class="badge badge-fechar">FECHAR</span>{% endif %}
-              {% if step.origin == "MANUAL" %}<span class="badge badge-manual">MANUAL</span>{% endif %}
             </span>
           </li>
         {% endfor %}

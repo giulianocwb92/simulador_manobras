@@ -16,6 +16,11 @@ class ManeuverStepOrigin(str, enum.Enum):
     MANUAL = "MANUAL"
 
 
+class ManeuverStepResponsibility(str, enum.Enum):
+    LOCAL = "LOCAL"
+    CENTRO = "CENTRO"
+
+
 class ProvisionalElementType(str, enum.Enum):
     JUMPER = "JUMPER"
     CHAVE_PROVISORIA = "CHAVE_PROVISORIA"

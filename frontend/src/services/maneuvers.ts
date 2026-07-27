@@ -1,5 +1,13 @@
 import { api, API_URL } from "./api";
-import type { Maneuver, ManeuverAction, ManeuverHeader, ManeuverStatus, ManeuverStep, ManeuverStepOrigin } from "../types/maneuver";
+import type {
+  Maneuver,
+  ManeuverAction,
+  ManeuverHeader,
+  ManeuverStatus,
+  ManeuverStep,
+  ManeuverStepOrigin,
+  ManeuverStepResponsibility,
+} from "../types/maneuver";
 
 export interface ManeuverCreatePayload {
   title: string;
@@ -21,6 +29,12 @@ export interface ManeuverStepCreatePayload {
   equipment_id?: string | null;
   action?: ManeuverAction | null;
   origin?: ManeuverStepOrigin;
+  responsibility?: ManeuverStepResponsibility;
+}
+
+export interface ManeuverStepUpdatePayload {
+  description?: string;
+  responsibility?: ManeuverStepResponsibility;
 }
 
 export const maneuversService = {
@@ -38,13 +52,14 @@ export const maneuversService = {
   updateHeader: (id: string, header: Partial<ManeuverHeader>) => api.put<Maneuver>(`/maneuvers/${id}`, { header }),
   addStep: (maneuverId: string, payload: ManeuverStepCreatePayload) =>
     api.post<ManeuverStep>(`/maneuvers/${maneuverId}/steps`, payload),
-  updateStep: (maneuverId: string, stepId: string, description: string) =>
-    api.put<ManeuverStep>(`/maneuvers/${maneuverId}/steps/${stepId}`, { description }),
+  updateStep: (maneuverId: string, stepId: string, patch: ManeuverStepUpdatePayload) =>
+    api.put<ManeuverStep>(`/maneuvers/${maneuverId}/steps/${stepId}`, patch),
   deleteStep: (maneuverId: string, stepId: string) => api.delete<void>(`/maneuvers/${maneuverId}/steps/${stepId}`),
   reorderSteps: (maneuverId: string, order: string[]) =>
     api.post<ManeuverStep[]>(`/maneuvers/${maneuverId}/steps/reorder`, { order }),
   finalize: (id: string) => api.post<Maneuver>(`/maneuvers/${id}/finalize`, {}),
   /** URL direta (não passa por `api.ts`/JSON) — o endpoint devolve o PDF com
-   *  `Content-Disposition: attachment`, então um link normal já baixa o arquivo. */
+   *  `Content-Disposition: inline`, então renderiza direto num <iframe> ou
+   *  numa aba do navegador, sem forçar download. */
   pdfUrl: (id: string) => `${API_URL}/maneuvers/${id}/pdf`,
 };

@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from weasyprint import HTML
 
 from app.core.config import get_settings
-from app.models.enums import ManeuverStatus
+from app.models.enums import ManeuverStatus, ManeuverStepResponsibility
 from app.models.maneuver import Maneuver, ManeuverStep, ManeuverSubstation
 from app.models.substation import Substation
 from app.schemas.maneuver import ManeuverCreate, ManeuverHeader, ManeuverStepCreate
@@ -26,6 +28,44 @@ class ManeuverFinalizedError(Exception):
 def assert_editable(maneuver: Maneuver) -> None:
     if maneuver.status == ManeuverStatus.FINALIZADA:
         raise ManeuverFinalizedError("Manobra finalizada não pode mais ser editada")
+
+
+async def assign_number(db: AsyncSession, maneuver: Maneuver) -> None:
+    """Atribui `number` no formato "0001/2026" (sequência zero-padded + ano
+    corrente) na primeira vez que a manobra é salva com dados reais — nunca
+    reatribuído depois (no-op se já tiver número, sem commit). Commita a
+    atribuição sozinho, pra poder tentar de novo em caso de choque. Chamado a
+    partir de qualquer PUT /maneuvers/{id} que efetivamente mude algo, ver
+    api/maneuvers.py.
+
+    `.with_for_update()` serializa a leitura do maior número já usado no ano
+    contra outras chamadas concorrentes desta função (mesmo padrão usado pro
+    lock de subestação, ver substation_service.py) — mas só trava linhas que
+    já existem; disputar o *primeiro* número do ano não trava nada (não há
+    linha ainda), por isso o retry no `UniqueConstraint` de `Maneuver.number`
+    abaixo é o que garante correção nesse caso raro.
+    """
+    if maneuver.number is not None:
+        return
+    year = datetime.now(timezone.utc).year
+    suffix = f"/{year}"
+    for attempt in range(3):
+        result = await db.execute(
+            select(Maneuver.number).where(Maneuver.number.like(f"%{suffix}")).with_for_update()
+        )
+        used = [row[0] for row in result.all()]
+        next_seq = max((int(n.split("/")[0]) for n in used), default=0) + 1
+        maneuver.number = f"{next_seq:04d}{suffix}"
+        try:
+            await db.commit()
+            return
+        except IntegrityError:
+            await db.rollback()
+            if attempt == 2:
+                raise
+            # rollback() expira os atributos carregados do objeto — precisa
+            # recarregar antes de tentar de novo (AsyncSession não faz lazy-load implícito).
+            await db.refresh(maneuver)
 
 
 async def create_maneuver(db: AsyncSession, payload: ManeuverCreate) -> Maneuver:
@@ -68,6 +108,7 @@ async def add_step(db: AsyncSession, maneuver: Maneuver, payload: ManeuverStepCr
         equipment_id=payload.equipment_id,
         action=payload.action,
         origin=payload.origin,
+        responsibility=payload.responsibility,
     )
     db.add(step)
     await db.commit()
@@ -75,9 +116,18 @@ async def add_step(db: AsyncSession, maneuver: Maneuver, payload: ManeuverStepCr
     return step
 
 
-async def update_step(db: AsyncSession, maneuver: Maneuver, step: ManeuverStep, description: str) -> ManeuverStep:
+async def update_step(
+    db: AsyncSession,
+    maneuver: Maneuver,
+    step: ManeuverStep,
+    description: str | None = None,
+    responsibility: ManeuverStepResponsibility | None = None,
+) -> ManeuverStep:
     assert_editable(maneuver)
-    step.description = description
+    if description is not None:
+        step.description = description
+    if responsibility is not None:
+        step.responsibility = responsibility
     await db.commit()
     await db.refresh(step)
     return step
@@ -139,6 +189,7 @@ async def clone_maneuver(db: AsyncSession, original: Maneuver) -> Maneuver:
                 equipment_id=step.equipment_id,
                 action=step.action,
                 origin=step.origin,
+                responsibility=step.responsibility,
             )
         )
 
@@ -171,7 +222,7 @@ def build_pdf_context(maneuver: Maneuver, substation_names: list[str]) -> dict:
     header = maneuver.header
     return {
         "titulo": maneuver.title,
-        "numero": header.get("numero"),
+        "numero": maneuver.number,
         "data": header.get("data"),
         "responsavel": header.get("responsavel"),
         "area": header.get("area"),
@@ -182,7 +233,7 @@ def build_pdf_context(maneuver: Maneuver, substation_names: list[str]) -> dict:
                 "order": step.order,
                 "description": step.description,
                 "action": step.action.value if step.action else None,
-                "origin": step.origin.value,
+                "responsibility": step.responsibility.value,
             }
             for step in sorted(maneuver.steps, key=lambda s: s.order)
         ],

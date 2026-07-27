@@ -5,10 +5,16 @@ const ACTION_BADGE: Record<string, string> = {
   FECHAR: "bg-red-50 text-red-700",
 };
 
-/** Badges de ação (ABRIR/FECHAR) e origem (manual) de um passo — usado tanto
- *  no painel de edição (StepsPanel) quanto na visualização do histórico
- *  (ManeuverDetailPage), que precisam mostrar exatamente a mesma coisa. */
-export function StepBadges({ step }: { step: Pick<ManeuverStep, "action" | "origin"> }) {
+const RESPONSIBILITY_BADGE: Record<string, string> = {
+  LOCAL: "bg-amber-50 text-amber-700",
+  CENTRO: "bg-slate-100 text-slate-500",
+};
+
+/** Badges de um passo — ação (ABRIR/FECHAR, ausente em passo manual) e
+ *  responsabilidade (LOCAL/CENTRO) — usado tanto no painel simplificado do
+ *  editor (StepsPanel) quanto na visualização do histórico (ManeuverDetailPage),
+ *  que precisam mostrar exatamente a mesma coisa. */
+export function StepBadges({ step }: { step: Pick<ManeuverStep, "action" | "responsibility"> }) {
   return (
     <>
       {step.action && (
@@ -16,11 +22,11 @@ export function StepBadges({ step }: { step: Pick<ManeuverStep, "action" | "orig
           {step.action}
         </span>
       )}
-      {step.origin === "MANUAL" && (
-        <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-          manual
-        </span>
-      )}
+      <span
+        className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${RESPONSIBILITY_BADGE[step.responsibility]}`}
+      >
+        {step.responsibility}
+      </span>
     </>
   );
 }

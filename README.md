@@ -96,28 +96,50 @@ npm run typecheck
   automaticamente um passo com a descrição textual padrão, exibido em tempo real no painel
   lateral direito
 - **"Finalizar Gravação"**: encerra o registro; o canvas fica somente leitura e o painel
-  lateral passa a permitir editar a manobra: reordenar passos (arrastar), editar texto,
-  deletar, adicionar passo manual, e preencher o cabeçalho (número, data, responsável,
-  área, descrição do isolamento) — tudo salvo na API a cada alteração
+  lateral passa a mostrar a lista de passos **somente leitura** (com badge de ação
+  ABRIR/FECHAR quando houver, badge de responsabilidade LOCAL/CENTRO, e botão excluir por
+  passo) — toda edição de fato (texto, reordenar, cabeçalho, inserir passo manual) é feita
+  na tela dedicada **"Editar Manobra"** (`/manobras/{id}/editar`), acessível por um botão
+  no próprio painel
 - **"Finalizar Manobra"**: chama `POST /maneuvers/{id}/finalize` — a manobra fica
   permanentemente travada para edição (diferente do "Finalizar Gravação" acima, que só
   trava o canvas; este trava o registro da manobra em si)
 - Uma 2ª subestação pode ser carregada no mesmo canvas (seletor no cabeçalho), lado a
   lado com a principal — útil pra manobras que envolvem duas SEs; os passos gerados a
   partir dela vêm prefixados com a sigla correspondente
-- **"Baixar PDF"**: gera e baixa o PDF da manobra a partir do template em
+- **"Visualizar PDF"**: abre o PDF da manobra numa aba nova, renderizado inline (o backend
+  devolve `Content-Disposition: inline`, sem forçar download) a partir do template em
   `backend/app/templates/maneuver.html` — **modelo provisório**, com layout genérico
-  (logo + tabela de cabeçalho + passos numerados), aguardando o template oficial
+  (logo + tabela de cabeçalho + passos numerados com responsabilidade), aguardando o
+  template oficial
+
+## Edição da manobra (`/manobras/{id}/editar`)
+
+Tela dedicada pra editar uma manobra em rascunho (chegando pelo painel do editor ou pelo
+botão "Editar" na tela de histórico/detalhe):
+
+- **Cabeçalho**: número (somente leitura — ver abaixo), data, responsável, área (editáveis)
+  e subestações (somente leitura, derivada das SEs vinculadas), mais a descrição do
+  isolamento
+- **Passos**: lista arrastável (`@dnd-kit`) — reordenar arrasta pelo ícone ⠿ e persiste na
+  hora; cada passo tem texto editável, dropdown de responsabilidade (LOCAL/CENTRO) e botão
+  excluir; botão "＋ Inserir passo" entre quaisquer dois passos (ou no topo/fim) cria um
+  passo em branco na posição exata
+- **Auto-save**: debounce de 2s em qualquer alteração de campo (cabeçalho ou texto/
+  responsabilidade de passo); botão "Salvar" força o envio imediato
+- **Número da manobra**: formato `0001/2026` (sequencial zero-padded + ano corrente),
+  atribuído automaticamente pelo backend no primeiro salvamento com dados reais e nunca
+  reatribuído depois — por isso é sempre somente leitura no formulário
+- **"Visualizar PDF"**: salva primeiro, depois abre o PDF numa aba nova
 
 ## Histórico de manobras
 
 Em `/manobras` (link na tela inicial): lista as manobras finalizadas, com filtros por
-subestação, responsável e intervalo de datas. Cada card tem três ações — **Visualizar**
-(tela somente leitura com cabeçalho e passos, `/manobras/{id}`), **Baixar PDF** e
-**Clonar** (cria um novo rascunho com o mesmo cabeçalho e sequência de passos, religado
-à versão atual de cada SE envolvida). O rascunho clonado é só visualizável nessa tela —
-continuar editando/gravando de fato (reordenar, passo manual, finalizar) precisa ser
-feito de dentro do editor de uma subestação, não tem canvas anexado à tela de histórico.
+subestação, responsável e intervalo de datas. Cada card leva pra tela de detalhe
+(`/manobras/{id}`), que tem três ações — **Editar** (só pra rascunhos, leva pra
+`/manobras/{id}/editar`), **Visualizar PDF** e **Clonar** (cria um novo rascunho com o
+mesmo cabeçalho e sequência de passos, religado à versão atual de cada SE envolvida — o
+clone recebe um número próprio, não herda o da manobra original).
 
 ## Estrutura de pastas
 

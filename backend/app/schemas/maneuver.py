@@ -3,11 +3,12 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import ManeuverAction, ManeuverStatus, ManeuverStepOrigin
+from app.models.enums import ManeuverAction, ManeuverStatus, ManeuverStepOrigin, ManeuverStepResponsibility
 
 
 class ManeuverHeader(BaseModel):
-    numero: str | None = None
+    # `numero` não existe mais aqui — número oficial agora é `Maneuver.number`,
+    # atribuído automaticamente (ver ManeuverRead.number / maneuver_service.assign_number).
     data: date | None = None
     responsavel: str | None = None
     area: str | None = None
@@ -20,6 +21,7 @@ class ManeuverStepCreate(BaseModel):
     equipment_id: str | None = None
     action: ManeuverAction | None = None
     origin: ManeuverStepOrigin = ManeuverStepOrigin.MANUAL
+    responsibility: ManeuverStepResponsibility = ManeuverStepResponsibility.CENTRO
 
 
 class ManeuverStepRead(BaseModel):
@@ -31,10 +33,12 @@ class ManeuverStepRead(BaseModel):
     equipment_id: str | None
     action: ManeuverAction | None
     origin: ManeuverStepOrigin
+    responsibility: ManeuverStepResponsibility
 
 
 class ManeuverStepUpdate(BaseModel):
-    description: str
+    description: str | None = None
+    responsibility: ManeuverStepResponsibility | None = None
 
 
 class ManeuverStepReorder(BaseModel):
@@ -62,6 +66,7 @@ class ManeuverRead(BaseModel):
 
     id: uuid.UUID
     title: str
+    number: str | None
     status: ManeuverStatus
     header: ManeuverHeader
     # Nomes reais das SEs vinculadas (via ManeuverSubstation) — ver
